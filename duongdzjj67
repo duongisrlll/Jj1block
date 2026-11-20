@@ -1,0 +1,1432 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local Debris = game:GetService("Debris")
+local Lighting = game:GetService("Lighting")
+
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+local Window = Rayfield:CreateWindow({
+	Name = "JJ1Block(was inspired from fixblock/fixfox)",
+	Icon = 113301831233217,
+	LoadingTitle = "JJ1Block(was inspired from fixblock/fixfox)",
+	LoadingSubtitle = "by duongjj67",
+	Theme = "Cyan",
+	DisableRayfieldPrompts = false,
+	DisableBuildWarnings = false,
+	ConfigurationSaving = {
+		Enabled = true,
+		FolderName = "JJ1BlockHub",
+		FileName = "JJ1Block_Config"
+	},
+	Discord = {
+		Enabled = true,
+		Invite = "cKewKv83f",
+		RememberJoins = true
+	},
+	KeySystem = false
+})
+
+local u22
+
+local function v23()
+	if u22 then
+		return u22
+	end
+
+	local ok, result = pcall(function()
+		return ReplicatedStorage:WaitForChild("Modules", 10):WaitForChild("Network", 5):WaitForChild("Network", 5):WaitForChild("RemoteEvent", 5)
+	end)
+
+	if ok and result then
+		u22 = result
+		return result
+	end
+
+	return nil
+end
+
+local function v26()
+	local v27 = v23()
+	if not v27 then
+		return
+	end
+
+	local v28 = _G.BlockMode == "007n7" and "\3\5\0\0\0Clone" or "\3\5\0\0\0Block"
+
+	pcall(function()
+		v27:FireServer(unpack({
+			"UseActorAbility",
+			{ buffer.fromstring(v28) }
+		}))
+	end)
+end
+
+local function v29()
+	local v30 = v23()
+	if v30 then
+		pcall(function()
+			v30:FireServer(unpack({
+				"UseActorAbility",
+				{ buffer.fromstring("\3\5\0\0\0Punch") }
+			}))
+		end)
+	end
+end
+
+_G.BaseHitboxSize = Vector3.new(4.5, 6, 7.5)
+_G.HitboxScale = 1
+_G.HitboxOffset = -1.4
+_G.HitboxColor = Color3.fromRGB(255, 255, 255)
+_G.ShowOutline = true
+_G.OutlineThickness = 0.01
+_G.ShowHitboxVisual = true
+_G.HitboxTransparency = 0.5
+_G.HitboxDuration = 1.5
+_G.BlockDelay = 0
+_G.AutoBlockEnabled = false
+_G.AutoBlockConnections = {}
+_G.LoopBlockEnabled = false
+_G.LoopColor = Color3.fromRGB(255, 0, 0)
+_G.LoopTransparency = 0.5
+_G.AngleBlockEnabled = false
+_G.AngleDistance = 20
+_G.AngleAngle = 60
+_G.AngleColor = Color3.fromRGB(0, 255, 0)
+_G.AngleTransparency = 0.5
+_G.BlockMode = "Guest 1337"
+
+local function v31(p1)
+	local CFrame_ = p1.CFrame
+	local v33 = p1.Size / 2
+	local t3 = {
+		Vector3.new(-v33.X, -v33.Y, -v33.Z),
+		Vector3.new(-v33.X, -v33.Y, v33.Z),
+		Vector3.new(-v33.X, v33.Y, -v33.Z),
+		Vector3.new(-v33.X, v33.Y, v33.Z),
+		Vector3.new(v33.X, -v33.Y, -v33.Z),
+		Vector3.new(v33.X, -v33.Y, v33.Z),
+		Vector3.new(v33.X, v33.Y, -v33.Z),
+		Vector3.new(v33.X, v33.Y, v33.Z)
+	}
+	local vector3 = Vector3.new(math.huge, math.huge, math.huge)
+	local vector32 = Vector3.new(-math.huge, -math.huge, -math.huge)
+
+	for _, v in ipairs(t3) do
+		local v39 = CFrame_ * v
+		vector3 = Vector3.new(math.min(vector3.X, v39.X), math.min(vector3.Y, v39.Y), math.min(vector3.Z, v39.Z))
+		vector32 = Vector3.new(math.max(vector32.X, v39.X), math.max(vector32.Y, v39.Y), math.max(vector32.Z, v39.Z))
+	end
+
+	return vector3, vector32
+end
+
+local function v40(p2, p3, p4, p5)
+	local v41 = p2.X <= p5.X and p3.X >= p4.X
+	return v41 and p2.Y <= p5.Y and p3.Y >= p4.Y and p2.Z <= p5.Z and p3.Z >= p4.Z
+end
+
+local function v42(p6)
+	local Character = LocalPlayer.Character
+	if not Character then
+		return false
+	end
+
+	local QueryHitbox = Character:FindFirstChild("QueryHitbox") or Character:FindFirstChild("HumanoidRootPart")
+	if not QueryHitbox then
+		return false
+	end
+
+	local QueryHitbox2 = p6:FindFirstChild("QueryHitbox") or p6:FindFirstChild("HumanoidRootPart") or p6:FindFirstChild("RootPart")
+	if not QueryHitbox2 then
+		return false
+	end
+
+	local v46 = QueryHitbox2.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
+	local v47 = _G.BaseHitboxSize * _G.HitboxScale
+	local overlapParams = OverlapParams.new()
+	overlapParams.FilterType = Enum.RaycastFilterType.Include
+	overlapParams.FilterDescendantsInstances = { QueryHitbox }
+
+	return #workspace:GetPartBoundsInBox(v46, v47, overlapParams) > 0
+end
+
+local function v49(p7)
+	local QueryHitbox = p7:FindFirstChild("QueryHitbox") or p7:FindFirstChild("HumanoidRootPart") or p7:FindFirstChild("RootPart")
+	if not QueryHitbox then
+		return
+	end
+
+	local Part
+
+	if _G.ShowHitboxVisual then
+		Part = Instance.new("Part")
+		Part.Name = "AutoBlockHitboxVisual"
+		Part.Transparency = _G.HitboxTransparency
+		Part.CanCollide = false
+		Part.CanTouch = false
+		Part.CanQuery = false
+		Part.CastShadow = false
+		Part.Anchored = false
+		Part.Size = _G.BaseHitboxSize * _G.HitboxScale
+		Part.Color = _G.HitboxColor
+		Part.Material = Enum.Material.ForceField
+		Part.CFrame = QueryHitbox.CFrame * CFrame.new(0, 0, _G.HitboxOffset)
+		Part.Parent = workspace
+
+		local WeldConstraint = Instance.new("WeldConstraint")
+		WeldConstraint.Part0 = QueryHitbox
+		WeldConstraint.Part1 = Part
+		WeldConstraint.Parent = Part
+
+		if _G.ShowOutline then
+			local SelectionBox = Instance.new("SelectionBox")
+			SelectionBox.Adornee = Part
+			SelectionBox.Color3 = _G.HitboxColor
+			SelectionBox.LineThickness = _G.OutlineThickness
+			SelectionBox.Transparency = 0.1
+			SelectionBox.Visible = true
+			SelectionBox.Parent = Part
+		end
+	end
+
+	if not v42(p7) then
+		local now = tick()
+		local u55 = false
+		local connection
+
+		connection = RunService.RenderStepped:Connect(function()
+			if not (u55 or _G.HitboxDuration < tick() - now) then
+				if not Part or Part.Parent then
+					if v42(p7) then
+						u55 = true
+						v26()
+						connection:Disconnect()
+
+						if Part and Part.Parent then
+							Part:Destroy()
+						end
+					end
+
+					return
+				end
+			end
+
+			connection:Disconnect()
+
+			if Part and Part.Parent then
+				Part:Destroy()
+			end
+		end)
+
+		task.delay(_G.HitboxDuration, function()
+			if Part and Part.Parent then
+				Part:Destroy()
+			end
+		end)
+
+		return
+	end
+
+	v26()
+
+	if Part then
+		Debris:AddItem(Part, _G.HitboxDuration)
+	end
+end
+
+local t4 = {
+	TriggerDistance = 20,
+	FacingMode = "Normal",
+	FacingCheck = false,
+	ShowRangeVisual = false
+}
+local u58
+
+local function v59()
+	if t4.FacingMode == "Loose" then
+		return 120
+	end
+
+	if t4.FacingMode == "Strict" then
+		return 45
+	end
+
+	return 85
+end
+
+local function v60(p8, p9)
+	return math.deg(math.acos(math.clamp(p8.CFrame.LookVector:Dot((p9.Position - p8.Position).Unit), -1, 1))) <= v59()
+end
+
+local function v61(p10)
+	local Character = LocalPlayer.Character
+	if not Character then
+		return false
+	end
+
+	local HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
+	if not HumanoidRootPart then
+		return false
+	end
+
+	local HumanoidRootPart2 = p10:FindFirstChild("HumanoidRootPart")
+	if not HumanoidRootPart2 then
+		return false
+	end
+
+	if t4.TriggerDistance < (HumanoidRootPart2.Position - HumanoidRootPart.Position).Magnitude then
+		return false
+	end
+
+	if t4.FacingCheck and not v60(HumanoidRootPart2, HumanoidRootPart) then
+		return false
+	end
+
+	return true
+end
+
+local function v65()
+	if u58 then
+		u58:Destroy()
+		u58 = nil
+	end
+
+	if not _G.LoopBlockEnabled or not t4.ShowRangeVisual or not LocalPlayer.Character then
+		return
+	end
+
+	local Killers = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
+	if not Killers then
+		return
+	end
+
+	local v67 = Killers:GetChildren()[1]
+	if not v67 or not v67:IsA("Model") then
+		return
+	end
+
+	local HumanoidRootPart = v67:FindFirstChild("HumanoidRootPart")
+	if not HumanoidRootPart then
+		return
+	end
+
+	local Part = Instance.new("Part")
+	Part.Name = "LoopRangeVisual"
+	Part.Shape = Enum.PartType.Ball
+	Part.Size = Vector3.new(t4.TriggerDistance * 2, 1, t4.TriggerDistance * 2)
+	Part.Color = _G.LoopColor
+	Part.Material = Enum.Material.ForceField
+	Part.Transparency = _G.LoopTransparency
+	Part.Anchored = false
+	Part.CanCollide = false
+	Part.CFrame = HumanoidRootPart.CFrame
+
+	local WeldConstraint = Instance.new("WeldConstraint")
+	WeldConstraint.Part0 = HumanoidRootPart
+	WeldConstraint.Part1 = Part
+	WeldConstraint.Parent = Part
+	Part.Parent = HumanoidRootPart
+	u58 = Part
+end
+
+local u71
+
+local function v72(p11, p12, p13, p14)
+	local HumanoidRootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+	if not HumanoidRootPart or not p11 then
+		return false
+	end
+
+	local v74 = HumanoidRootPart.Position - p11.Position
+	if p13 < v74.Magnitude then
+		return false
+	end
+
+	return math.deg(math.acos(math.clamp(p12:Dot(v74.Unit), -1, 1))) <= p14 / 2
+end
+
+local function v75(p15)
+	local Character = LocalPlayer.Character
+	if not Character or not Character:FindFirstChild("HumanoidRootPart") then
+		return false
+	end
+
+	local HumanoidRootPart = p15:FindFirstChild("HumanoidRootPart")
+	if HumanoidRootPart then
+		return v72(HumanoidRootPart, HumanoidRootPart.CFrame.LookVector, _G.AngleDistance, _G.AngleAngle)
+	end
+
+	return false
+end
+
+local function v78()
+	if u71 then
+		u71:Destroy()
+		u71 = nil
+	end
+
+	if not _G.AngleBlockEnabled or not LocalPlayer.Character then
+		return
+	end
+
+	local Killers = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
+	if not Killers then
+		return
+	end
+
+	local v80 = Killers:GetChildren()[1]
+	if not v80 or not v80:IsA("Model") then
+		return
+	end
+
+	local HumanoidRootPart = v80:FindFirstChild("HumanoidRootPart")
+	if not HumanoidRootPart then
+		return
+	end
+
+	local AngleDistance = _G.AngleDistance
+	local v83 = math.rad(_G.AngleAngle / 2)
+	local AngleColor = _G.AngleColor
+	local AngleTransparency = _G.AngleTransparency
+	local Model = Instance.new("Model")
+	Model.Name = "AngleBlockVisual"
+	Model.Parent = workspace
+
+	local Part = Instance.new("Part")
+	Part.Name = "AngleBlockBase"
+	Part.Size = Vector3.new(0.1, 0.1, 0.1)
+	Part.Transparency = 1
+	Part.CanCollide = false
+	Part.Anchored = false
+	Part.CFrame = HumanoidRootPart.CFrame
+	Part.Parent = Model
+
+	local WeldConstraint = Instance.new("WeldConstraint")
+	WeldConstraint.Part0 = HumanoidRootPart
+	WeldConstraint.Part1 = Part
+	WeldConstraint.Parent = Part
+
+	for i = 1, 40 do
+		local Part2 = Instance.new("Part")
+		Part2.Size = Vector3.new(0.15, 0.5, AngleDistance)
+		Part2.Color = AngleColor
+		Part2.Transparency = AngleTransparency
+		Part2.Material = Enum.Material.SmoothPlastic
+		Part2.CanCollide = false
+		Part2.Anchored = false
+		Part2.CFrame = Part.CFrame * CFrame.Angles(0, (-v83 + (i - 1) * (2 * v83 / 40) + (-v83 + i * (2 * v83 / 40))) / 2, 0) * CFrame.new(0, 0, -AngleDistance / 2)
+		Part2.Parent = Model
+	end
+
+	local Attachment = Instance.new("Attachment", Part)
+	local Attachment2 = Instance.new("Attachment", Part)
+	Attachment2.Position = (CFrame.Angles(0, v83, 0) * Vector3.new(0, 0, -1)).Unit * AngleDistance
+	local Attachment3 = Instance.new("Attachment", Part)
+	Attachment3.Position = (CFrame.Angles(0, -v83, 0) * Vector3.new(0, 0, -1)).Unit * AngleDistance
+
+	local function v96(p16, p17, p18)
+		local Beam = Instance.new("Beam")
+		Beam.Attachment0 = p16
+		Beam.Attachment1 = p17
+		Beam.Color = ColorSequence.new(p18)
+		Beam.Width0 = 0.2
+		Beam.Width1 = 0.2
+		Beam.Transparency = NumberSequence.new(AngleTransparency)
+		Beam.Parent = Model
+	end
+
+	v96(Attachment, Attachment2, AngleColor)
+	v96(Attachment, Attachment3, AngleColor)
+	u71 = Model
+end
+
+local u98, u99
+local u100 = false
+
+local function v101()
+	local Killers = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
+	if not Killers then
+		return
+	end
+
+	local v103 = Killers:GetChildren()[1]
+	if not v103 or not v103:IsA("Model") then
+		return
+	end
+
+	local attribute = v103:GetAttribute("AbilityLastUsed") or 0
+	local attribute2 = v103:GetAttribute("AbilitiesUsed") or 0
+
+	if u98 == nil then
+		u98 = attribute
+		u99 = attribute2
+		return
+	end
+
+	if u99 < attribute2 then
+		u100 = true
+	end
+
+	if u98 < attribute then
+		if u100 then
+			u100 = false
+		else
+			if _G.AutoBlockEnabled then
+				v49(v103)
+			end
+			if _G.LoopBlockEnabled and v61(v103) then
+				v26()
+			end
+			if _G.AngleBlockEnabled and v75(v103) then
+				v26()
+			end
+		end
+	end
+
+	u98 = attribute
+	u99 = attribute2
+end
+
+local function v110()
+	local v111 = v23()
+	if not v111 then
+		return
+	end
+
+	pcall(function()
+		v111:FireServer(unpack({
+			"UseActorAbility",
+			{ buffer.fromstring("\3\8\0\0\000404Error") }
+		}))
+	end)
+end
+
+local function v112()
+	local v113 = v23()
+	if not v113 then
+		return
+	end
+
+	pcall(function()
+		v113:FireServer(unpack({
+			"UseActorAbility",
+			{ buffer.fromstring("\3\n\0\0\0RagingPace") }
+		}))
+	end)
+end
+
+local t5 = { Enabled = false, Range = 30, Cooldown = 5 }
+local t11 = { Enabled = false, Range = 18, Cooldown = 5 }
+
+local t6 = {
+	["rbxassetid://111910850942168"] = true, ["rbxassetid://114486446625838"] = true,
+	["rbxassetid://115267992424648"] = true, ["rbxassetid://12222225"] = true,
+	["rbxassetid://132596270805754"] = true, ["rbxassetid://5569523548"] = true,
+	["rbxassetid://81714228693719"] = true, ["rbxassetid://83851356262523"] = true,
+	["rbxassetid://92445809840331"] = true, ["rbxassetid://106017333"] = true,
+	["rbxassetid://115628477888204"] = true, ["rbxassetid://119184708937957"] = true,
+	["rbxassetid://119783821935002"] = true, ["rbxassetid://121165596165296"] = true,
+	["rbxassetid://13510737"] = true, ["rbxassetid://139012439429121"] = true,
+	["rbxassetid://201858045"] = true, ["rbxassetid://2101137"] = true,
+	["rbxassetid://2920960"] = true, ["rbxassetid://30324308"] = true,
+	["rbxassetid://74027282199279"] = true, ["rbxassetid://78809856001660"] = true,
+	["rbxassetid://78855728194221"] = true, ["rbxassetid://80188965454763"] = true,
+	["rbxassetid://80521472651047"] = true, ["rbxassetid://93728378684947"] = true,
+	["rbxassetid://95606102752011"] = true
+}
+local t7 = {
+	"102808968188291", "116616310968045", "117828699507982", "123825742002486",
+	"125854302746190", "132298811847315", "135209101640984", "18568553101",
+	"423041300", "423041325", "423041356", "81114852524420",
+	"82772022662025", "91165993312513", "95135835034592"
+}
+
+local t8, t12 = {}, {}
+for k in pairs(t6) do
+	t8[k] = "Shedletsky"
+	t12[k] = "Shedletsky"
+end
+for _, v in ipairs(t7) do
+	t8["rbxassetid://" .. v] = "Guest"
+end
+
+local t9, t10, t13, t14 = {}, {}, {}, {}
+local u123 = false
+
+local function v124()
+	if u123 then
+		return
+	end
+
+	u123 = true
+	task.spawn(function()
+		local now = tick()
+		while tick() - now < 3 and t5.Enabled do
+			v110()
+			task.wait(0.05)
+		end
+		u123 = false
+	end)
+end
+
+local function getSoundPartPos(sound)
+	local Parent = sound.Parent
+	if Parent and Parent:IsA("BasePart") then
+		return Parent.Position, Parent
+	elseif Parent and Parent:IsA("Attachment") and Parent.Parent and Parent.Parent:IsA("BasePart") then
+		return Parent.Parent.Position, Parent.Parent
+	else
+		local BasePart = sound:FindFirstAncestorWhichIsA("BasePart")
+		if BasePart then
+			return BasePart.Position, BasePart
+		end
+	end
+	return nil, nil
+end
+
+local function hookSound(p20)
+	if not p20:IsA("Sound") or p20:GetAttribute("JJ1block_Hooked") then
+		return
+	end
+
+	p20:SetAttribute("JJ1block_Hooked", true)
+
+	local function onPlay()
+		local match = tostring(p20.SoundId):match("%d+")
+		if not match then
+			return
+		end
+
+		local key = "rbxassetid://" .. match
+		local pos, part = getSoundPartPos(p20)
+		if not pos or not part then
+			return
+		end
+
+		local Model = part:FindFirstAncestorOfClass("Model")
+		if not Model or Players:GetPlayerFromCharacter(Model) == LocalPlayer then
+			return
+		end
+
+		local hrp = Model:FindFirstChild("HumanoidRootPart")
+		local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		if not hrp or not myHrp then
+			return
+		end
+
+		local dist = (pos - myHrp.Position).Magnitude
+
+		if t5.Enabled and t8[key] and dist <= t5.Range then
+			t9[p20] = { attackerHrp = hrp, sourceType = t8[key] }
+		end
+		if t11.Enabled and t12[key] and dist <= t11.Range then
+			t13[p20] = { attackerHrp = hrp, sourceType = t12[key] }
+		end
+	end
+
+	local c1 = p20.Played:Connect(onPlay)
+	local c2 = p20:GetPropertyChangedSignal("Playing"):Connect(function()
+		if not p20.Playing then
+			t9[p20] = nil
+			t13[p20] = nil
+		end
+	end)
+	p20.AncestryChanged:Connect(function(_, parent)
+		if not parent then
+			t9[p20] = nil
+			t10[p20] = nil
+			t13[p20] = nil
+			t14[p20] = nil
+			c1:Disconnect()
+			c2:Disconnect()
+		end
+	end)
+
+	if p20.Playing then
+		onPlay()
+	end
+end
+
+for _, descendant in ipairs(workspace:GetDescendants()) do
+	hookSound(descendant)
+end
+
+workspace.DescendantAdded:Connect(hookSound)
+
+local t15 = {
+	["108911997126897"] = true, ["82137285150006"] = true, ["129843313690921"] = true,
+	["140703210927645"] = true, ["136007065400978"] = true, ["86096387000557"] = true,
+	["87259391926321"] = true, ["86709774283672"] = true, ["108807732150251"] = true,
+	["138040001965654"] = true
+}
+local t16 = {
+	["132298811847315"] = true, ["117216912143451"] = true, ["125854302746190"] = true,
+	["18568553101"] = true, ["123825742002486"] = true, ["423041300"] = true,
+	["423041325"] = true, ["423041356"] = true, ["116616310968045"] = true,
+	["1238257420024866"] = true, ["81114852524420"] = true
+}
+local t17 = {
+	AutoPunch = false,
+	PunchAim = false,
+	AimDistance = 50,
+	TrackingEnabled = false
+}
+
+local n1, n2 = 0, 0
+local u167 = false
+local u168, u170
+
+local function v171()
+	local Character = LocalPlayer.Character
+	local HumanoidRootPart = Character and Character:FindFirstChild("HumanoidRootPart")
+	if not HumanoidRootPart then
+		return nil
+	end
+
+	local Killers = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
+	if not Killers then
+		return nil
+	end
+
+	local v175
+	local huge = math.huge
+
+	for _, child in ipairs(Killers:GetChildren()) do
+		if child:IsA("Model") and child:FindFirstChild("HumanoidRootPart") and child ~= Character then
+			local Magnitude = (child.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
+			if Magnitude < huge then
+				huge = Magnitude
+				v175 = child
+			end
+		end
+	end
+
+	return v175
+end
+
+local function v180(p23, p24)
+	if u170 then
+		u170:Destroy()
+		u170 = nil
+	end
+
+	u167 = true
+	u168 = p23
+	n2 = tick() + p24
+
+	local HumanoidRootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+	if HumanoidRootPart then
+		local BodyVelocity = Instance.new("BodyVelocity")
+		BodyVelocity.MaxForce = Vector3.new(400000, 0, 400000)
+		BodyVelocity.Velocity = Vector3.zero
+		BodyVelocity.P = 1000
+		BodyVelocity.Parent = HumanoidRootPart
+		u170 = BodyVelocity
+
+		local Humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if Humanoid then
+			Humanoid.WalkSpeed = 0
+		end
+	end
+end
+
+local function v184()
+	u167 = false
+	u168 = nil
+
+	if u170 then
+		u170:Destroy()
+		u170 = nil
+	end
+
+	local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+	if Humanoid then
+		Humanoid.WalkSpeed = 16
+	end
+end
+
+local function v189()
+	local now = tick()
+	if now - n1 < 0.4 then
+		return
+	end
+
+	n1 = now
+
+	if t17.AutoPunch then
+		v29()
+	end
+
+	local v191 = v171()
+	if not v191 then
+		return
+	end
+
+	local HumanoidRootPart = v191:FindFirstChild("HumanoidRootPart")
+	if not HumanoidRootPart then
+		return
+	end
+
+	if t17.PunchAim then
+		local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		if myHrp and (HumanoidRootPart.Position - myHrp.Position).Magnitude <= t17.AimDistance then
+			local lookPos = Vector3.new(HumanoidRootPart.Position.X, myHrp.Position.Y, HumanoidRootPart.Position.Z)
+			myHrp.CFrame = CFrame.lookAt(myHrp.Position, lookPos)
+		end
+	end
+
+	if t17.TrackingEnabled then
+		v180(v191, 0.35)
+	end
+end
+
+local function v198(character)
+	local Humanoid = character:FindFirstChildOfClass("Humanoid")
+	local Animator = Humanoid and Humanoid:FindFirstChildOfClass("Animator")
+	if not Animator or Animator:GetAttribute("jj1block_PunchHooked") then
+		return
+	end
+
+	Animator:SetAttribute("jj1block_PunchHooked", true)
+	Animator.AnimationPlayed:Connect(function(p26)
+		local match = p26.Animation and p26.Animation.AnimationId and p26.Animation.AnimationId:match("%d+")
+		if match and t15[match] then
+			v189()
+		end
+	end)
+end
+
+if LocalPlayer.Character then
+	v198(LocalPlayer.Character)
+end
+
+LocalPlayer.CharacterAdded:Connect(v198)
+
+local function v201(descendant)
+	if not descendant:IsA("Sound") or descendant:GetAttribute("Jj1block_PunchSoundHooked") then
+		return
+	end
+
+	descendant:SetAttribute("Jj1block_PunchSoundHooked", true)
+
+	local function v202()
+		if descendant.IsPlaying then
+			local match = tostring(descendant.SoundId):match("%d+")
+			if match and t16[match] then
+				v189()
+			end
+		end
+	end
+
+	descendant.Played:Connect(v202)
+	descendant:GetPropertyChangedSignal("IsPlaying"):Connect(v202)
+
+	if descendant.IsPlaying then
+		task.spawn(v202)
+	end
+end
+
+for _, descendant in ipairs(workspace:GetDescendants()) do
+	v201(descendant)
+end
+
+workspace.DescendantAdded:Connect(v201)
+
+_G.Brightness = 0
+_G.GlobalShadows = true
+_G.NoFog = false
+_G.Fullbright = false
+
+local u205 = false
+local t18 = {}
+
+local function v207(p29)
+	if not (p29:IsA("BasePart") or p29:IsA("Decal") or p29:IsA("Texture")) then
+		return
+	end
+
+	if p29:IsDescendantOf(LocalPlayer.Character) then
+		return
+	end
+
+	if u205 then
+		if p29:IsA("BasePart") then
+			t18[p29] = { Material = p29.Material, Reflectance = p29.Reflectance }
+			p29.Material = Enum.Material.SmoothPlastic
+			p29.Reflectance = 0
+		elseif (p29:IsA("Decal") or p29:IsA("Texture")) and p29.Name ~= "face" then
+			t18[p29] = { Transparency = p29.Transparency }
+			p29.Transparency = 1
+		end
+	end
+end
+
+workspace.DescendantAdded:Connect(function(descendant)
+	if u205 then
+		task.wait(0.1)
+		v207(descendant)
+	end
+end)
+
+local function v208(p30)
+	u205 = p30
+	if p30 then
+		pcall(function()
+			settings().Rendering.QualityLevel = 1
+		end)
+		for _, descendant in ipairs(game:GetDescendants()) do
+			v207(descendant)
+		end
+	else
+		pcall(function()
+			settings().Rendering.QualityLevel = 0
+		end)
+		for k, v in pairs(t18) do
+			if k and k.Parent then
+				for k2, v2 in pairs(v) do
+					pcall(function()
+						k[k2] = v2
+					end)
+				end
+			end
+		end
+		t18 = {}
+	end
+end
+
+RunService.Heartbeat:Connect(function()
+	if _G.AutoBlockEnabled or _G.LoopBlockEnabled or _G.AngleBlockEnabled then
+		v101()
+	end
+
+	if _G.LoopBlockEnabled then
+		v65()
+	elseif u58 then
+		u58:Destroy()
+		u58 = nil
+	end
+
+	if _G.AngleBlockEnabled then
+		v78()
+	elseif u71 then
+		u71:Destroy()
+		u71 = nil
+	end
+
+	if u167 then
+		local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		local targetHrp = u168 and u168:FindFirstChild("HumanoidRootPart")
+		if myHrp and targetHrp and targetHrp.Parent and tick() < n2 then
+			local Unit = (targetHrp.Position - myHrp.Position).Unit
+			if u170 then
+				u170.Velocity = Unit * 35
+			end
+			myHrp.CFrame = CFrame.lookAt(myHrp.Position, Vector3.new(targetHrp.Position.X, myHrp.Position.Y, targetHrp.Position.Z))
+		else
+			v184()
+		end
+	end
+
+	if t5.Enabled then
+		local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		if myHrp then
+			local v220, v221
+			local huge = math.huge
+			for k, v in pairs(t9) do
+				if not (k.Parent and k.Playing and v.attackerHrp and v.attackerHrp.Parent) then
+					t9[k] = nil
+				else
+					local mag = (v.attackerHrp.Position - myHrp.Position).Magnitude
+					if mag < huge then
+						huge = mag
+						v220 = k
+						v221 = v
+					end
+				end
+			end
+			if v221 and (not t10[v220] or tick() - t10[v220] >= t5.Cooldown) then
+				t10[v220] = tick()
+				v124()
+			end
+		end
+	end
+
+	if t11.Enabled then
+		local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		if myHrp then
+			local v228, v229
+			local huge = math.huge
+			for k, v in pairs(t13) do
+				if not (k.Parent and k.Playing and v.attackerHrp and v.attackerHrp.Parent) then
+					t13[k] = nil
+				else
+					local mag = (v.attackerHrp.Position - myHrp.Position).Magnitude
+					if mag < huge then
+						huge = mag
+						v228 = k
+						v229 = v
+					end
+				end
+			end
+			if v229 and (not t14[v228] or tick() - t14[v228] >= t11.Cooldown) then
+				t14[v228] = tick()
+				v112()
+			end
+		end
+	end
+
+	if _G.Fullbright then
+		if not Lighting:GetAttribute("FogStart") then
+			Lighting:SetAttribute("FogStart", Lighting.FogStart)
+		end
+		if not Lighting:GetAttribute("FogEnd") then
+			Lighting:SetAttribute("FogEnd", Lighting.FogEnd)
+		end
+		local Atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+		if Atmosphere and not Atmosphere:GetAttribute("Density") then
+			Atmosphere:SetAttribute("Density", Atmosphere.Density)
+		end
+
+		Lighting.FogStart = _G.NoFog and 0 or Lighting:GetAttribute("FogStart")
+		Lighting.FogEnd = _G.NoFog and math.huge or Lighting:GetAttribute("FogEnd")
+		if Atmosphere then
+			Atmosphere.Density = _G.NoFog and 0 or Atmosphere:GetAttribute("Density")
+		end
+		Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+		Lighting.Brightness = _G.Brightness or 0
+		Lighting.GlobalShadows = not _G.GlobalShadows
+	end
+end)
+
+local BoxTab = Window:CreateTab("Box Block", "square")
+BoxTab:CreateSection("Auto Block")
+
+BoxTab:CreateToggle({
+	Name = "Enable AutoBlock",
+	CurrentValue = false,
+	Flag = "AutoBlockToggle",
+	Callback = function(v)
+		_G.AutoBlockEnabled = v
+		u98 = nil
+		u99 = nil
+		u100 = false
+		if v then
+			v23()
+		end
+	end
+})
+
+BoxTab:CreateSlider({
+	Name = "Transparency",
+	Range = {0, 1},
+	Increment = 0.05,
+	CurrentValue = 0.5,
+	Flag = "HitboxTransparency",
+	Callback = function(v)
+		_G.HitboxTransparency = v
+	end
+})
+
+BoxTab:CreateColorPicker({
+	Name = "Hitbox Color",
+	Color = _G.HitboxColor,
+	Flag = "HitboxColor",
+	Callback = function(v)
+		_G.HitboxColor = v
+	end
+})
+
+BoxTab:CreateDropdown({
+	Name = "Block Mode",
+	Options = {"Guest 1337", "007n7"},
+	CurrentOption = {"Guest 1337"},
+	MultipleOptions = false,
+	Flag = "BlockModeSelector",
+	Callback = function(Opt)
+		_G.BlockMode = type(Opt) == "table" and Opt[1] or Opt
+	end
+})
+
+BoxTab:CreateSection("Hitbox Settings")
+
+BoxTab:CreateSlider({
+	Name = "Size",
+	Range = {0.2, 3},
+	Increment = 0.1,
+	CurrentValue = 1,
+	Flag = "HitboxSize",
+	Callback = function(v)
+		_G.HitboxScale = v
+	end
+})
+
+BoxTab:CreateSlider({
+	Name = "Offset (Z)",
+	Range = {-10, 0},
+	Increment = 0.1,
+	CurrentValue = -1.4,
+	Flag = "HitboxOffset",
+	Callback = function(v)
+		_G.HitboxOffset = v
+	end
+})
+
+BoxTab:CreateSlider({
+	Name = "Duration",
+	Range = {0.1, 5},
+	Increment = 0.1,
+	CurrentValue = 1.5,
+	Flag = "HitboxDuration",
+	Callback = function(v)
+		_G.HitboxDuration = v
+	end
+})
+
+local LoopTab = Window:CreateTab("Loop Block", "circle")
+LoopTab:CreateSection("Loop Block")
+
+LoopTab:CreateToggle({
+	Name = "Enable Loop Block",
+	CurrentValue = false,
+	Flag = "LoopBlockToggle",
+	Callback = function(v)
+		_G.LoopBlockEnabled = v
+		if v then
+			v23()
+			v65()
+		elseif u58 then
+			u58:Destroy()
+			u58 = nil
+		end
+	end
+})
+
+LoopTab:CreateSlider({
+	Name = "Transparency",
+	Range = {0, 1},
+	Increment = 0.05,
+	CurrentValue = 0.5,
+	Flag = "LoopTransparency",
+	Callback = function(v)
+		_G.LoopTransparency = v
+		v65()
+	end
+})
+
+LoopTab:CreateColorPicker({
+	Name = "Loop Color",
+	Color = _G.LoopColor,
+	Flag = "LoopColor",
+	Callback = function(v)
+		_G.LoopColor = v
+		v65()
+	end
+})
+
+LoopTab:CreateToggle({
+	Name = "Show Range Visual",
+	CurrentValue = false,
+	Flag = "ShowRangeVisual",
+	Callback = function(v)
+		t4.ShowRangeVisual = v
+		v65()
+	end
+})
+
+LoopTab:CreateSection("Loop Settings")
+
+LoopTab:CreateSlider({
+	Name = "Trigger Distance",
+	Range = {5, 50},
+	Increment = 1,
+	CurrentValue = 20,
+	Flag = "TriggerDistance",
+	Callback = function(v)
+		t4.TriggerDistance = v
+		v65()
+	end
+})
+
+LoopTab:CreateDropdown({
+	Name = "Facing Mode",
+	Options = {"Loose", "Normal", "Strict"},
+	CurrentOption = {"Normal"},
+	MultipleOptions = false,
+	Flag = "FacingMode",
+	Callback = function(Opt)
+		t4.FacingMode = type(Opt) == "table" and Opt[1] or Opt
+	end
+})
+
+LoopTab:CreateToggle({
+	Name = "Facing Check",
+	CurrentValue = false,
+	Flag = "FacingCheck",
+	Callback = function(v)
+		t4.FacingCheck = v
+	end
+})
+
+local AngleTab = Window:CreateTab("Angle Block", "triangle")
+AngleTab:CreateSection("Angle Block")
+
+AngleTab:CreateToggle({
+	Name = "Enable Angle Block",
+	CurrentValue = false,
+	Flag = "AngleBlockToggle",
+	Callback = function(v)
+		_G.AngleBlockEnabled = v
+		if v then
+			v23()
+			v78()
+		elseif u71 then
+			u71:Destroy()
+			u71 = nil
+		end
+	end
+})
+
+AngleTab:CreateSlider({
+	Name = "Transparency",
+	Range = {0, 1},
+	Increment = 0.05,
+	CurrentValue = 0.5,
+	Flag = "AngleTransparency",
+	Callback = function(v)
+		_G.AngleTransparency = v
+		v78()
+	end
+})
+
+AngleTab:CreateColorPicker({
+	Name = "Angle Color",
+	Color = _G.AngleColor,
+	Flag = "AngleColor",
+	Callback = function(v)
+		_G.AngleColor = v
+		v78()
+	end
+})
+
+AngleTab:CreateSection("Angle Settings")
+
+AngleTab:CreateSlider({
+	Name = "Distance",
+	Range = {5, 50},
+	Increment = 1,
+	CurrentValue = 20,
+	Flag = "AngleDistance",
+	Callback = function(v)
+		_G.AngleDistance = v
+		v78()
+	end
+})
+
+AngleTab:CreateSlider({
+	Name = "Angle",
+	Range = {10, 180},
+	Increment = 5,
+	CurrentValue = 60,
+	Flag = "AngleAngle",
+	Callback = function(v)
+		_G.AngleAngle = v
+		v78()
+	end
+})
+
+local KillerTab = Window:CreateTab("Killer", "swords")
+KillerTab:CreateSection("Auto 404 Error")
+
+KillerTab:CreateToggle({
+	Name = "Enable Auto 404 Error",
+	CurrentValue = false,
+	Flag = "Auto404Enabled",
+	Callback = function(v)
+		t5.Enabled = v
+	end
+})
+
+KillerTab:CreateSlider({
+	Name = "Detection Range",
+	Range = {5, 100},
+	Increment = 1,
+	CurrentValue = 30,
+	Flag = "Auto404Range",
+	Callback = function(v)
+		t5.Range = v
+	end
+})
+
+KillerTab:CreateSlider({
+	Name = "Cooldown (s)",
+	Range = {1, 30},
+	Increment = 1,
+	CurrentValue = 5,
+	Flag = "Auto404Cooldown",
+	Callback = function(v)
+		t5.Cooldown = v
+	end
+})
+
+KillerTab:CreateSection("Auto Raging Pace")
+
+KillerTab:CreateToggle({
+	Name = "Enable Auto Raging Pace",
+	CurrentValue = false,
+	Flag = "AutoRPEnabled",
+	Callback = function(v)
+		t11.Enabled = v
+	end
+})
+
+KillerTab:CreateSlider({
+	Name = "Detection Range",
+	Range = {5, 100},
+	Increment = 1,
+	CurrentValue = 18,
+	Flag = "AutoRPRange",
+	Callback = function(v)
+		t11.Range = v
+	end
+})
+
+KillerTab:CreateSlider({
+	Name = "Cooldown (s)",
+	Range = {1, 30},
+	Increment = 1,
+	CurrentValue = 5,
+	Flag = "AutoRPCooldown",
+	Callback = function(v)
+		t11.Cooldown = v
+	end
+})
+
+local PunchTab = Window:CreateTab("Punch", "crosshair")
+PunchTab:CreateSection("Auto Punch & Aim")
+
+PunchTab:CreateToggle({
+	Name = "Enable Auto Punch",
+	CurrentValue = false,
+	Flag = "AutoPunchToggle",
+	Callback = function(v)
+		t17.AutoPunch = v
+	end
+})
+
+PunchTab:CreateToggle({
+	Name = "Punch Tracking",
+	CurrentValue = false,
+	Flag = "PunchTracking",
+	Callback = function(v)
+		t17.TrackingEnabled = v
+	end
+})
+
+PunchTab:CreateToggle({
+	Name = "Punch Aim",
+	CurrentValue = false,
+	Flag = "PunchAimToggle",
+	Callback = function(v)
+		t17.PunchAim = v
+	end
+})
+
+PunchTab:CreateSlider({
+	Name = "Aim Distance",
+	Range = {10, 200},
+	Increment = 5,
+	CurrentValue = 50,
+	Flag = "AimDistance",
+	Callback = function(v)
+		t17.AimDistance = v
+	end
+})
+
+local MiscTab = Window:CreateTab("Misc", "wrench")
+MiscTab:CreateSection("Camera")
+
+MiscTab:CreateToggle({
+	Name = "Free Zoom",
+	CurrentValue = false,
+	Flag = "FreeZoom",
+	Callback = function(v)
+		LocalPlayer.CameraMaxZoomDistance = v and math.huge or 12
+	end
+})
+
+MiscTab:CreateToggle({
+	Name = "Camera Noclip",
+	CurrentValue = false,
+	Flag = "CameraNoclip",
+	Callback = function(v)
+		LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode[v and "Invisicam" or "Zoom"]
+	end
+})
+
+MiscTab:CreateSection("Lighting")
+
+MiscTab:CreateSlider({
+	Name = "Brightness",
+	Range = {0, 3},
+	Increment = 0.1,
+	CurrentValue = 0,
+	Flag = "Brightness",
+	Callback = function(v)
+		_G.Brightness = v
+	end
+})
+
+MiscTab:CreateToggle({
+	Name = "No Shadows",
+	CurrentValue = false,
+	Flag = "NoShadows",
+	Callback = function(v)
+		_G.GlobalShadows = v
+	end
+})
+
+MiscTab:CreateToggle({
+	Name = "No Fog",
+	CurrentValue = false,
+	Flag = "NoFog",
+	Callback = function(v)
+		_G.NoFog = v
+	end
+})
+
+MiscTab:CreateToggle({
+	Name = "Enable Lighting",
+	CurrentValue = false,
+	Flag = "EnableLighting",
+	Callback = function(v)
+		_G.Fullbright = v
+		if not v then
+			Lighting.OutdoorAmbient = Color3.fromRGB(55, 55, 55)
+			Lighting.Brightness = 0
+			Lighting.GlobalShadows = true
+		end
+	end
+})
+
+MiscTab:CreateSection("Performance & UI")
+
+MiscTab:CreateToggle({
+	Name = "Low FPS",
+	CurrentValue = false,
+	Flag = "LowFps",
+	Callback = function(v)
+		v208(v)
+	end
+})
+
+MiscTab:CreateButton({
+	Name = "Destroy UI (Unload)",
+	Callback = function()
+		Rayfield:Destroy()
+	end
+})
+
+Rayfield:LoadConfiguration()
