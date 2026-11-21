@@ -675,9 +675,36 @@ local t17 = {
 	TrackingEnabled = false
 }
 
-local n1, n2 = 0, 0
-local u167 = false
-local u168, u170
+local n1 = 0
+local lastPunchFire = 0
+local trackingActive = false
+local trackingEndTime = 0
+local trackingTarget = nil
+local trackingBodyVel = nil
+local aimActiveUntil = 0
+local aimTarget = nil
+
+local function stopTrackingSmooth()
+	trackingActive = false
+	trackingTarget = nil
+	if trackingBodyVel then
+		trackingBodyVel:Destroy()
+		trackingBodyVel = nil
+	end
+end
+
+local function faceTargetHorizontal(myHrp, targetHrp)
+	if not myHrp or not targetHrp or not myHrp.Parent or not targetHrp.Parent then
+		return
+	end
+	local flatSelf = Vector3.new(myHrp.Position.X, 0, myHrp.Position.Z)
+	local flatTarget = Vector3.new(targetHrp.Position.X, 0, targetHrp.Position.Z)
+	local flatDiff = flatTarget - flatSelf
+	if flatDiff.Magnitude > 0.08 then
+		local lookAtPos = Vector3.new(targetHrp.Position.X, myHrp.Position.Y, targetHrp.Position.Z)
+		myHrp.CFrame = CFrame.lookAt(myHrp.Position, lookAtPos)
+	end
+end
 
 local function v171()
 	local Character = LocalPlayer.Character
@@ -687,103 +714,100 @@ local function v171()
 	end
 
 	local Killers = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
-	if not Killers then
-		return nil
+	if Killers then
+		local bestModel
+		local bestDist = math.huge
+		for _, child in ipairs(Killers:GetChildren()) do
+			if child:IsA("Model") and child:FindFirstChild("HumanoidRootPart") and child ~= Character then
+				local hum = child:FindFirstChildOfClass("Humanoid")
+				if not hum or hum.Health > 0 then
+					local mag = (child.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
+					if mag < bestDist then
+						bestDist = mag
+						bestModel = child
+					end
+				end
+			end
+		end
+		if bestModel then
+			return bestModel
+		end
 	end
 
-	local v175
-	local huge = math.huge
-
-	for _, child in ipairs(Killers:GetChildren()) do
-		if child:IsA("Model") and child:FindFirstChild("HumanoidRootPart") and child ~= Character then
-			local Magnitude = (child.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
-			if Magnitude < huge then
-				huge = Magnitude
-				v175 = child
+	local bestFallback
+	local bestFallbackDist = math.huge
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+			local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+			if not hum or hum.Health > 0 then
+				local mag = (plr.Character.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
+				if mag < bestFallbackDist then
+					bestFallbackDist = mag
+					bestFallback = plr.Character
+				end
 			end
 		end
 	end
-
-	return v175
+	return bestFallback
 end
 
-local function v180(p23, p24)
-	if u170 then
-		u170:Destroy()
-		u170 = nil
+local function startTracking(targetModel, duration)
+	local char = LocalPlayer.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not hrp or not hum or hum.Health <= 0 then
+		return
 	end
 
-	u167 = true
-	u168 = p23
-	n2 = tick() + p24
+	stopTrackingSmooth()
+	trackingActive = true
+	trackingTarget = targetModel
+	trackingEndTime = tick() + (duration or 0.26)
 
-	local HumanoidRootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-	if HumanoidRootPart then
-		local BodyVelocity = Instance.new("BodyVelocity")
-		BodyVelocity.MaxForce = Vector3.new(400000, 0, 400000)
-		BodyVelocity.Velocity = Vector3.zero
-		BodyVelocity.P = 1000
-		BodyVelocity.Parent = HumanoidRootPart
-		u170 = BodyVelocity
-
-		local Humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-		if Humanoid then
-			Humanoid.WalkSpeed = 0
-		end
-	end
-end
-
-local function v184()
-	u167 = false
-	u168 = nil
-
-	if u170 then
-		u170:Destroy()
-		u170 = nil
-	end
-
-	local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-	if Humanoid then
-		Humanoid.WalkSpeed = 16
-	end
+	local bv = Instance.new("BodyVelocity")
+	bv.Name = "JJ1_PunchTrackVel"
+	bv.MaxForce = Vector3.new(25000, 0, 25000)
+	bv.Velocity = Vector3.zero
+	bv.P = 900
+	bv.Parent = hrp
+	trackingBodyVel = bv
 end
 
 local function v189()
 	local now = tick()
-	if now - n1 < 0.4 then
+	if now - n1 < 0.3 then
 		return
 	end
-
 	n1 = now
 
-	if t17.AutoPunch then
-		v29()
+	local targetModel = v171()
+	local targetHrp = targetModel and targetModel:FindFirstChild("HumanoidRootPart")
+	local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+	local dist = (myHrp and targetHrp) and (targetHrp.Position - myHrp.Position).Magnitude or math.huge
+
+	if t17.PunchAim and targetHrp and myHrp and dist <= t17.AimDistance then
+		aimTarget = targetModel
+		aimActiveUntil = now + 0.35
+		faceTargetHorizontal(myHrp, targetHrp)
 	end
 
-	local v191 = v171()
-	if not v191 then
-		return
+	if t17.TrackingEnabled and targetHrp and myHrp and dist <= math.max(t17.AimDistance, 35) then
+		startTracking(targetModel, 0.26)
 	end
 
-	local HumanoidRootPart = v191:FindFirstChild("HumanoidRootPart")
-	if not HumanoidRootPart then
-		return
-	end
-
-	if t17.PunchAim then
-		local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-		if myHrp and (HumanoidRootPart.Position - myHrp.Position).Magnitude <= t17.AimDistance then
-			local lookPos = Vector3.new(HumanoidRootPart.Position.X, myHrp.Position.Y, HumanoidRootPart.Position.Z)
-			myHrp.CFrame = CFrame.lookAt(myHrp.Position, lookPos)
+	if t17.AutoPunch and (now - lastPunchFire >= 0.35) then
+		if not targetHrp or not myHrp or dist <= math.min(t17.AimDistance, 14) then
+			lastPunchFire = now
+			v29()
 		end
-	end
-
-	if t17.TrackingEnabled then
-		v180(v191, 0.35)
 	end
 end
 
 local function v198(character)
+	stopTrackingSmooth()
+	aimActiveUntil = 0
+	aimTarget = nil
+
 	local Humanoid = character:FindFirstChildOfClass("Humanoid")
 	local Animator = Humanoid and Humanoid:FindFirstChildOfClass("Animator")
 	if not Animator or Animator:GetAttribute("jj1block_PunchHooked") then
@@ -916,22 +940,42 @@ RunService.Heartbeat:Connect(function()
 		u71 = nil
 	end
 
-	if u167 then
-		local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-		local targetHrp = u168 and u168:FindFirstChild("HumanoidRootPart")
-		if myHrp and targetHrp and targetHrp.Parent and tick() < n2 then
-			local Unit = (targetHrp.Position - myHrp.Position).Unit
-			if u170 then
-				u170.Velocity = Unit * 35
+	local char = LocalPlayer.Character
+	local myHrp = char and char:FindFirstChild("HumanoidRootPart")
+	local myHum = char and char:FindFirstChildOfClass("Humanoid")
+
+	if trackingActive then
+		local tgtModel = (trackingTarget and trackingTarget.Parent) and trackingTarget or v171()
+		local tgtHrp = tgtModel and tgtModel:FindFirstChild("HumanoidRootPart")
+		local tgtHum = tgtModel and tgtModel:FindFirstChildOfClass("Humanoid")
+		local alive = not tgtHum or tgtHum.Health > 0
+
+		if myHrp and myHum and myHum.Health > 0 and tgtHrp and tgtHrp.Parent and alive and tick() < trackingEndTime then
+			local flatDiff = Vector3.new(tgtHrp.Position.X - myHrp.Position.X, 0, tgtHrp.Position.Z - myHrp.Position.Z)
+			local flatDist = flatDiff.Magnitude
+
+			if flatDist > 4.2 and trackingBodyVel then
+				local stepSpeed = math.clamp(flatDist * 4, 18, 32)
+				trackingBodyVel.Velocity = flatDiff.Unit * stepSpeed
+			elseif trackingBodyVel then
+				trackingBodyVel.Velocity = Vector3.zero
 			end
-			myHrp.CFrame = CFrame.lookAt(myHrp.Position, Vector3.new(targetHrp.Position.X, myHrp.Position.Y, targetHrp.Position.Z))
+
+			if t17.PunchAim then
+				faceTargetHorizontal(myHrp, tgtHrp)
+			end
 		else
-			v184()
+			stopTrackingSmooth()
+		end
+	elseif t17.PunchAim and tick() < aimActiveUntil then
+		local tgtModel = (aimTarget and aimTarget.Parent) and aimTarget or v171()
+		local tgtHrp = tgtModel and tgtModel:FindFirstChild("HumanoidRootPart")
+		if myHrp and tgtHrp and tgtHrp.Parent and (tgtHrp.Position - myHrp.Position).Magnitude <= t17.AimDistance then
+			faceTargetHorizontal(myHrp, tgtHrp)
 		end
 	end
 
 	if t5.Enabled then
-		local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 		if myHrp then
 			local v220, v221
 			local huge = math.huge
@@ -955,7 +999,6 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	if t11.Enabled then
-		local myHrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 		if myHrp then
 			local v228, v229
 			local huge = math.huge
@@ -1001,7 +1044,7 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
-local BoxTab = Window:CreateTab("Box Block", "square")
+local BoxTab = Window:CreateTab("Box Block", "shield")
 BoxTab:CreateSection("Auto Block")
 
 BoxTab:CreateToggle({
@@ -1322,6 +1365,9 @@ PunchTab:CreateToggle({
 	Flag = "PunchTracking",
 	Callback = function(v)
 		t17.TrackingEnabled = v
+		if not v and trackingActive then
+			stopTrackingSmooth()
+		end
 	end
 })
 
@@ -1331,6 +1377,10 @@ PunchTab:CreateToggle({
 	Flag = "PunchAimToggle",
 	Callback = function(v)
 		t17.PunchAim = v
+		if not v then
+			aimActiveUntil = 0
+			aimTarget = nil
+		end
 	end
 })
 
@@ -1425,6 +1475,7 @@ MiscTab:CreateToggle({
 MiscTab:CreateButton({
 	Name = "Destroy UI (Unload)",
 	Callback = function()
+		stopTrackingSmooth()
 		Rayfield:Destroy()
 	end
 })
