@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local Debris = game:GetService("Debris")
@@ -14,8 +15,8 @@ local Window = Rayfield:CreateWindow({
 	Name = "JJ1Block(was inspired from fixblock/fixfox)",
 	Icon = 113301831233217,
 	LoadingTitle = "JJ1Block(was inspired from fixblock/fixfox)",
-	LoadingSubtitle = "by duongjj67/duongjj1",
-	Theme = "Dark",
+	LoadingSubtitle = "by duongjj67",
+	Theme = "Cyan",
 	DisableRayfieldPrompts = false,
 	DisableBuildWarnings = false,
 	ConfigurationSaving = {
@@ -905,55 +906,117 @@ if not guiOk then
 	overlayGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
-local function makeDraggable(guiObj, onTap)
+local function makeDraggableFrame(guiObj)
 	local dragging = false
-	local moved = false
-	local dragInput, dragStart, startPos
-	local lastTap = 0
+	local dragStart = Vector2.zero
+	local startPos = guiObj.Position
 
 	guiObj.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
-			moved = false
-			dragStart = input.Position
+			dragStart = Vector2.new(input.Position.X, input.Position.Y)
 			startPos = guiObj.Position
-
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					local wasTap = dragging and not moved
-					dragging = false
-					if wasTap and onTap then
-						local now = os.clock()
-						if now - lastTap >= 0.14 then
-							lastTap = now
-							onTap()
-						end
-					end
-				end
-			end)
 		end
 	end)
 
-	guiObj.InputChanged:Connect(function(input)
+	UserInputService.InputChanged:Connect(function(input)
+		if not dragging then
+			return
+		end
 		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-			dragInput = input
+			local delta = Vector2.new(input.Position.X, input.Position.Y) - dragStart
+			guiObj.Position = UDim2.new(
+				startPos.X.Scale,
+				startPos.X.Offset + delta.X,
+				startPos.Y.Scale,
+				startPos.Y.Offset + delta.Y
+			)
 		end
 	end)
 
-	RunService.RenderStepped:Connect(function()
-		if dragging and dragInput and overlayGui.Parent then
-			local delta = dragInput.Position - dragStart
-			if delta.Magnitude > 6 then
-				moved = true
-			end
-			if moved then
-				guiObj.Position = UDim2.new(
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
+end
+
+local function attachDragAndToggle(btn, onToggle)
+	local dragging = false
+	local movedFar = false
+	local detached = false
+	local dragStart = Vector2.zero
+	local startPos = btn.Position
+	local lastTrigger = 0
+
+	local function fireTap()
+		local now = os.clock()
+		if now - lastTrigger < 0.12 then
+			return
+		end
+		lastTrigger = now
+		if onToggle then
+			onToggle()
+		end
+	end
+
+	local function detachFree()
+		if detached then
+			return
+		end
+		detached = true
+		local absPos = btn.AbsolutePosition
+		local absSize = btn.AbsoluteSize
+		btn.Parent = overlayGui
+		btn.Size = UDim2.new(0, absSize.X > 0 and absSize.X or 128, 0, absSize.Y > 0 and absSize.Y or 34)
+		btn.Position = UDim2.new(0, absPos.X, 0, absPos.Y)
+		startPos = btn.Position
+	end
+
+	btn.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			movedFar = false
+			dragStart = Vector2.new(input.Position.X, input.Position.Y)
+			startPos = btn.Position
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if not dragging then
+			return
+		end
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			local delta = Vector2.new(input.Position.X, input.Position.Y) - dragStart
+			if delta.Magnitude > 8 then
+				movedFar = true
+				detachFree()
+				btn.Position = UDim2.new(
 					startPos.X.Scale,
 					startPos.X.Offset + delta.X,
 					startPos.Y.Scale,
 					startPos.Y.Offset + delta.Y
 				)
 			end
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if not dragging then
+			return
+		end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			local shouldToggle = not movedFar
+			dragging = false
+			if shouldToggle then
+				fireTap()
+			end
+		end
+	end)
+
+	btn.Activated:Connect(function()
+		if not movedFar then
+			fireTap()
 		end
 	end)
 end
@@ -990,7 +1053,7 @@ statsLabel.TextColor3 = Color3.fromRGB(235, 250, 255)
 statsLabel.Text = "FPS: -- | Ping: --"
 statsLabel.Parent = statsFrame
 
-makeDraggable(statsFrame, nil)
+makeDraggableFrame(statsFrame)
 
 local function updateStatsVisibility()
 	statsFrame.Visible = showFps or showPing
@@ -1059,8 +1122,6 @@ quickLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 quickLayout.SortOrder = Enum.SortOrder.LayoutOrder
 quickLayout.Parent = quickHolder
 
-makeDraggable(quickHolder, nil)
-
 local function createQuickButton(name, labelText, order, onToggleTap)
 	local btn = Instance.new("TextButton")
 	btn.Name = name
@@ -1069,6 +1130,9 @@ local function createQuickButton(name, labelText, order, onToggleTap)
 	btn.BackgroundColor3 = Color3.fromRGB(16, 28, 34)
 	btn.BackgroundTransparency = 0.15
 	btn.BorderSizePixel = 0
+	btn.Active = true
+	btn.Selectable = true
+	btn.AutoButtonColor = true
 	btn.Font = Enum.Font.GothamBold
 	btn.TextSize = 12
 	btn.TextColor3 = Color3.fromRGB(200, 215, 225)
@@ -1085,7 +1149,7 @@ local function createQuickButton(name, labelText, order, onToggleTap)
 	stroke.Thickness = 1.4
 	stroke.Parent = btn
 
-	makeDraggable(btn, onToggleTap)
+	attachDragAndToggle(btn, onToggleTap)
 
 	return {
 		Button = btn,
@@ -1535,6 +1599,11 @@ MiscTab:CreateToggle({
 	Flag = "ShowQuickButtonsToggle",
 	Callback = function(v)
 		quickHolder.Visible = v
+		for _, child in ipairs(overlayGui:GetChildren()) do
+			if child:IsA("TextButton") and string.find(child.Name, "QuickBtn") then
+				child.Visible = v
+			end
+		end
 	end
 })
 MiscTab:CreateToggle({
