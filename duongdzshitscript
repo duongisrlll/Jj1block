@@ -14,8 +14,8 @@ local Window = Rayfield:CreateWindow({
 	Name = "JJ1Block(was inspired from fixblock/fixfox)",
 	Icon = 113301831233217,
 	LoadingTitle = "JJ1Block(was inspired from fixblock/fixfox)",
-	LoadingSubtitle = "by duongjj67",
-	Theme = "Cyan",
+	LoadingSubtitle = "by duongjj67/duongjj1",
+	Theme = "Dark",
 	DisableRayfieldPrompts = false,
 	DisableBuildWarnings = false,
 	ConfigurationSaving = {
@@ -893,7 +893,6 @@ local function v208(p30)
 	end
 end
 
--- Overlay GUI: FPS Tracker, Ping Checker & Quick Buttons (Box, Loop, Angle)
 local overlayGui = Instance.new("ScreenGui")
 overlayGui.Name = "JJ1Block_Overlay"
 overlayGui.ResetOnSpawn = false
@@ -910,6 +909,7 @@ local function makeDraggable(guiObj, onTap)
 	local dragging = false
 	local moved = false
 	local dragInput, dragStart, startPos
+	local lastTap = 0
 
 	guiObj.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -923,7 +923,11 @@ local function makeDraggable(guiObj, onTap)
 					local wasTap = dragging and not moved
 					dragging = false
 					if wasTap and onTap then
-						onTap()
+						local now = os.clock()
+						if now - lastTap >= 0.14 then
+							lastTap = now
+							onTap()
+						end
 					end
 				end
 			end)
@@ -954,7 +958,6 @@ local function makeDraggable(guiObj, onTap)
 	end)
 end
 
--- FPS & Ping HUD
 local showFps = false
 local showPing = false
 
@@ -1041,11 +1044,10 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
--- Quick Buttons Holder (hiện từng nút khi chế độ tương ứng đang bật)
 local quickHolder = Instance.new("Frame")
 quickHolder.Name = "QuickButtonsHolder"
-quickHolder.Size = UDim2.new(0, 128, 0, 120)
-quickHolder.Position = UDim2.new(0.8, -64, 0.55, 0)
+quickHolder.Size = UDim2.new(0, 134, 0, 126)
+quickHolder.Position = UDim2.new(0.8, -67, 0.55, 0)
 quickHolder.BackgroundTransparency = 1
 quickHolder.BorderSizePixel = 0
 quickHolder.Parent = overlayGui
@@ -1063,15 +1065,15 @@ local function createQuickButton(name, labelText, order, onToggleTap)
 	local btn = Instance.new("TextButton")
 	btn.Name = name
 	btn.LayoutOrder = order
-	btn.Size = UDim2.new(0, 124, 0, 34)
+	btn.Size = UDim2.new(0, 128, 0, 34)
 	btn.BackgroundColor3 = Color3.fromRGB(16, 28, 34)
 	btn.BackgroundTransparency = 0.15
 	btn.BorderSizePixel = 0
 	btn.Font = Enum.Font.GothamBold
 	btn.TextSize = 12
-	btn.TextColor3 = Color3.fromRGB(120, 255, 210)
-	btn.Text = labelText .. ": ON"
-	btn.Visible = false
+	btn.TextColor3 = Color3.fromRGB(200, 215, 225)
+	btn.Text = labelText .. ": OFF"
+	btn.Visible = true
 	btn.Parent = quickHolder
 
 	local corner = Instance.new("UICorner")
@@ -1079,7 +1081,7 @@ local function createQuickButton(name, labelText, order, onToggleTap)
 	corner.Parent = btn
 
 	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(0, 230, 160)
+	stroke.Color = Color3.fromRGB(90, 110, 125)
 	stroke.Thickness = 1.4
 	stroke.Parent = btn
 
@@ -1089,8 +1091,9 @@ local function createQuickButton(name, labelText, order, onToggleTap)
 		Button = btn,
 		Stroke = stroke,
 		SetState = function(enabled)
-			btn.Visible = enabled == true
-			if enabled then
+			local isOn = enabled == true
+			btn.Visible = true
+			if isOn then
 				btn.Text = labelText .. ": ON"
 				btn.TextColor3 = Color3.fromRGB(120, 255, 210)
 				stroke.Color = Color3.fromRGB(0, 230, 160)
@@ -1128,6 +1131,72 @@ local function refreshAllQuickButtons()
 	boxQuick.SetState(_G.AutoBlockEnabled)
 	loopQuick.SetState(_G.LoopBlockEnabled)
 	angleQuick.SetState(_G.AngleBlockEnabled)
+end
+
+local syncGuard = false
+
+local function applyBlockToggleState(kind, enabled)
+	if syncGuard then
+		return
+	end
+	syncGuard = true
+
+	local target = enabled == true
+	if kind == "box" then
+		_G.AutoBlockEnabled = target
+		boxQuick.SetState(target)
+		if AutoBlockToggle then
+			pcall(function()
+				if AutoBlockToggle.CurrentValue ~= target then
+					AutoBlockToggle:Set(target)
+				end
+			end)
+		end
+	elseif kind == "loop" then
+		_G.LoopBlockEnabled = target
+		loopQuick.SetState(target)
+		if LoopBlockToggle then
+			pcall(function()
+				if LoopBlockToggle.CurrentValue ~= target then
+					LoopBlockToggle:Set(target)
+				end
+			end)
+		end
+		if not target and u58 then
+			u58:Destroy()
+			u58 = nil
+		end
+	elseif kind == "angle" then
+		_G.AngleBlockEnabled = target
+		angleQuick.SetState(target)
+		if AngleBlockToggle then
+			pcall(function()
+				if AngleBlockToggle.CurrentValue ~= target then
+					AngleBlockToggle:Set(target)
+				end
+			end)
+		end
+		if not target and u71 then
+			u71:Destroy()
+			u71 = nil
+		end
+	end
+
+	task.defer(function()
+		syncGuard = false
+	end)
+end
+
+syncAutoBlockState = function(v)
+	applyBlockToggleState("box", v)
+end
+
+syncLoopBlockState = function(v)
+	applyBlockToggleState("loop", v)
+end
+
+syncAngleBlockState = function(v)
+	applyBlockToggleState("angle", v)
 end
 
 RunService.Heartbeat:Connect(function()
@@ -1231,535 +1300,284 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	if _G.Fullbright then
-		if not Lighting:GetAttribute("FogStart") then
-			Lighting:SetAttribute("FogStart", Lighting.FogStart)
+		Lighting.Brightness = _G.Brightness > 0 and _G.Brightness or 2
+		Lighting.GlobalShadows = false
+		if _G.NoFog then
+			Lighting.FogEnd = 100000
 		end
-		if not Lighting:GetAttribute("FogEnd") then
-			Lighting:SetAttribute("FogEnd", Lighting.FogEnd)
+	else
+		Lighting.Brightness = _G.Brightness
+		Lighting.GlobalShadows = _G.GlobalShadows
+		if _G.NoFog then
+			Lighting.FogEnd = 100000
 		end
-		local Atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-		if Atmosphere and not Atmosphere:GetAttribute("Density") then
-			Atmosphere:SetAttribute("Density", Atmosphere.Density)
-		end
-
-		Lighting.FogStart = _G.NoFog and 0 or Lighting:GetAttribute("FogStart")
-		Lighting.FogEnd = _G.NoFog and math.huge or Lighting:GetAttribute("FogEnd")
-		if Atmosphere then
-			Atmosphere.Density = _G.NoFog and 0 or Atmosphere:GetAttribute("Density")
-		end
-		Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
-		Lighting.Brightness = _G.Brightness or 0
-		Lighting.GlobalShadows = not _G.GlobalShadows
 	end
 end)
 
 local BoxTab = Window:CreateTab("Box Block", "shield")
-BoxTab:CreateSection("Auto Block")
-
-local guardBox = false
-syncAutoBlockState = function(state)
-	if guardBox then
-		return
-	end
-	guardBox = true
-	_G.AutoBlockEnabled = state
-	u98 = nil
-	u99 = nil
-	u100 = false
-	if state then
-		v23()
-	end
-	if AutoBlockToggle and AutoBlockToggle.Set then
-		pcall(function()
-			AutoBlockToggle:Set(state)
-		end)
-	end
-	boxQuick.SetState(state)
-	guardBox = false
-end
-
 AutoBlockToggle = BoxTab:CreateToggle({
-	Name = "Enable AutoBlock",
+	Name = "Auto Block (Box)",
 	CurrentValue = false,
 	Flag = "AutoBlockToggle",
 	Callback = function(v)
-		syncAutoBlockState(v)
+		applyBlockToggleState("box", v)
 	end
 })
-
-BoxTab:CreateSlider({
-	Name = "Transparency",
-	Range = {0, 1},
-	Increment = 0.05,
-	CurrentValue = 0.5,
-	Flag = "HitboxTransparency",
-	Callback = function(v)
-		_G.HitboxTransparency = v
-	end
-})
-
-BoxTab:CreateColorPicker({
-	Name = "Hitbox Color",
-	Color = _G.HitboxColor,
-	Flag = "HitboxColor",
-	Callback = function(v)
-		_G.HitboxColor = v
-	end
-})
-
 BoxTab:CreateDropdown({
 	Name = "Block Mode",
-	Options = {"Guest 1337", "007n7"},
-	CurrentOption = {"Guest 1337"},
-	MultipleOptions = false,
-	Flag = "BlockModeSelector",
-	Callback = function(Opt)
-		_G.BlockMode = type(Opt) == "table" and Opt[1] or Opt
+	Options = { "Guest 1337", "007n7" },
+	CurrentOption = { _G.BlockMode },
+	Flag = "BlockModeDropdown",
+	Callback = function(opt)
+		local chosen = type(opt) == "table" and opt[1] or opt
+		if chosen then
+			_G.BlockMode = chosen
+		end
 	end
 })
-
-BoxTab:CreateSection("Hitbox Settings")
-
 BoxTab:CreateSlider({
-	Name = "Size",
-	Range = {0.2, 3},
-	Increment = 0.1,
-	CurrentValue = 1,
-	Flag = "HitboxSize",
+	Name = "Hitbox Scale",
+	Range = { 0.5, 2.5 },
+	Increment = 0.05,
+	Suffix = "x",
+	CurrentValue = _G.HitboxScale,
+	Flag = "HitboxScaleSlider",
 	Callback = function(v)
 		_G.HitboxScale = v
 	end
 })
-
 BoxTab:CreateSlider({
-	Name = "Offset (Z)",
-	Range = {-10, 0},
+	Name = "Hitbox Offset",
+	Range = { -5, 5 },
 	Increment = 0.1,
-	CurrentValue = -1.4,
-	Flag = "HitboxOffset",
+	Suffix = " studs",
+	CurrentValue = _G.HitboxOffset,
+	Flag = "HitboxOffsetSlider",
 	Callback = function(v)
 		_G.HitboxOffset = v
 	end
 })
-
-BoxTab:CreateSlider({
-	Name = "Duration",
-	Range = {0.1, 5},
-	Increment = 0.1,
-	CurrentValue = 1.5,
-	Flag = "HitboxDuration",
+BoxTab:CreateToggle({
+	Name = "Show Hitbox Visual",
+	CurrentValue = _G.ShowHitboxVisual,
+	Flag = "ShowHitboxVisualToggle",
 	Callback = function(v)
-		_G.HitboxDuration = v
+		_G.ShowHitboxVisual = v
 	end
 })
 
 local LoopTab = Window:CreateTab("Loop Block", "circle")
-LoopTab:CreateSection("Loop Block")
-
-local guardLoop = false
-syncLoopBlockState = function(state)
-	if guardLoop then
-		return
-	end
-	guardLoop = true
-	_G.LoopBlockEnabled = state
-	if state then
-		v23()
-		v65()
-	elseif u58 then
-		u58:Destroy()
-		u58 = nil
-	end
-	if LoopBlockToggle and LoopBlockToggle.Set then
-		pcall(function()
-			LoopBlockToggle:Set(state)
-		end)
-	end
-	loopQuick.SetState(state)
-	guardLoop = false
-end
-
 LoopBlockToggle = LoopTab:CreateToggle({
-	Name = "Enable Loop Block",
+	Name = "Loop Block",
 	CurrentValue = false,
 	Flag = "LoopBlockToggle",
 	Callback = function(v)
-		syncLoopBlockState(v)
+		applyBlockToggleState("loop", v)
 	end
 })
-
-LoopTab:CreateSlider({
-	Name = "Transparency",
-	Range = {0, 1},
-	Increment = 0.05,
-	CurrentValue = 0.5,
-	Flag = "LoopTransparency",
-	Callback = function(v)
-		_G.LoopTransparency = v
-		v65()
-	end
-})
-
-LoopTab:CreateColorPicker({
-	Name = "Loop Color",
-	Color = _G.LoopColor,
-	Flag = "LoopColor",
-	Callback = function(v)
-		_G.LoopColor = v
-		v65()
-	end
-})
-
-LoopTab:CreateToggle({
-	Name = "Show Range Visual",
-	CurrentValue = false,
-	Flag = "ShowRangeVisual",
-	Callback = function(v)
-		t4.ShowRangeVisual = v
-		v65()
-	end
-})
-
-LoopTab:CreateSection("Loop Settings")
-
 LoopTab:CreateSlider({
 	Name = "Trigger Distance",
-	Range = {5, 50},
+	Range = { 5, 45 },
 	Increment = 1,
-	CurrentValue = 20,
-	Flag = "TriggerDistance",
+	Suffix = " studs",
+	CurrentValue = t4.TriggerDistance,
+	Flag = "LoopTriggerDistanceSlider",
 	Callback = function(v)
 		t4.TriggerDistance = v
-		v65()
 	end
 })
-
-LoopTab:CreateDropdown({
-	Name = "Facing Mode",
-	Options = {"Loose", "Normal", "Strict"},
-	CurrentOption = {"Normal"},
-	MultipleOptions = false,
-	Flag = "FacingMode",
-	Callback = function(Opt)
-		t4.FacingMode = type(Opt) == "table" and Opt[1] or Opt
-	end
-})
-
 LoopTab:CreateToggle({
 	Name = "Facing Check",
-	CurrentValue = false,
-	Flag = "FacingCheck",
+	CurrentValue = t4.FacingCheck,
+	Flag = "LoopFacingCheckToggle",
 	Callback = function(v)
 		t4.FacingCheck = v
 	end
 })
+LoopTab:CreateDropdown({
+	Name = "Facing Mode",
+	Options = { "Loose", "Normal", "Strict" },
+	CurrentOption = { t4.FacingMode },
+	Flag = "LoopFacingModeDropdown",
+	Callback = function(opt)
+		local chosen = type(opt) == "table" and opt[1] or opt
+		if chosen then
+			t4.FacingMode = chosen
+		end
+	end
+})
+LoopTab:CreateToggle({
+	Name = "Show Range Visual",
+	CurrentValue = t4.ShowRangeVisual,
+	Flag = "LoopRangeVisualToggle",
+	Callback = function(v)
+		t4.ShowRangeVisual = v
+		if not v and u58 then
+			u58:Destroy()
+			u58 = nil
+		end
+	end
+})
 
 local AngleTab = Window:CreateTab("Angle Block", "triangle")
-AngleTab:CreateSection("Angle Block")
-
-local guardAngle = false
-syncAngleBlockState = function(state)
-	if guardAngle then
-		return
-	end
-	guardAngle = true
-	_G.AngleBlockEnabled = state
-	if state then
-		v23()
-		v78()
-	elseif u71 then
-		u71:Destroy()
-		u71 = nil
-	end
-	if AngleBlockToggle and AngleBlockToggle.Set then
-		pcall(function()
-			AngleBlockToggle:Set(state)
-		end)
-	end
-	angleQuick.SetState(state)
-	guardAngle = false
-end
-
 AngleBlockToggle = AngleTab:CreateToggle({
-	Name = "Enable Angle Block",
+	Name = "Angle Block",
 	CurrentValue = false,
 	Flag = "AngleBlockToggle",
 	Callback = function(v)
-		syncAngleBlockState(v)
+		applyBlockToggleState("angle", v)
 	end
 })
-
 AngleTab:CreateSlider({
-	Name = "Transparency",
-	Range = {0, 1},
-	Increment = 0.05,
-	CurrentValue = 0.5,
-	Flag = "AngleTransparency",
-	Callback = function(v)
-		_G.AngleTransparency = v
-		v78()
-	end
-})
-
-AngleTab:CreateColorPicker({
-	Name = "Angle Color",
-	Color = _G.AngleColor,
-	Flag = "AngleColor",
-	Callback = function(v)
-		_G.AngleColor = v
-		v78()
-	end
-})
-
-AngleTab:CreateSection("Angle Settings")
-
-AngleTab:CreateSlider({
-	Name = "Distance",
-	Range = {5, 50},
+	Name = "Angle Distance",
+	Range = { 5, 50 },
 	Increment = 1,
-	CurrentValue = 20,
-	Flag = "AngleDistance",
+	Suffix = " studs",
+	CurrentValue = _G.AngleDistance,
+	Flag = "AngleDistanceSlider",
 	Callback = function(v)
 		_G.AngleDistance = v
-		v78()
 	end
 })
-
 AngleTab:CreateSlider({
-	Name = "Angle",
-	Range = {10, 180},
+	Name = "Angle FOV",
+	Range = { 15, 160 },
 	Increment = 5,
-	CurrentValue = 60,
-	Flag = "AngleAngle",
+	Suffix = " deg",
+	CurrentValue = _G.AngleAngle,
+	Flag = "AngleFovSlider",
 	Callback = function(v)
 		_G.AngleAngle = v
-		v78()
 	end
 })
 
 local KillerTab = Window:CreateTab("Killer", "swords")
-KillerTab:CreateSection("Auto 404 Error")
-
 KillerTab:CreateToggle({
-	Name = "Enable Auto 404 Error",
-	CurrentValue = false,
-	Flag = "Auto404Enabled",
+	Name = "Auto 404 Error",
+	CurrentValue = t5.Enabled,
+	Flag = "Auto404Toggle",
 	Callback = function(v)
 		t5.Enabled = v
 	end
 })
-
 KillerTab:CreateSlider({
-	Name = "Detection Range",
-	Range = {5, 100},
+	Name = "404 Error Range",
+	Range = { 5, 60 },
 	Increment = 1,
-	CurrentValue = 30,
-	Flag = "Auto404Range",
+	Suffix = " studs",
+	CurrentValue = t5.Range,
+	Flag = "Auto404RangeSlider",
 	Callback = function(v)
 		t5.Range = v
 	end
 })
-
-KillerTab:CreateSlider({
-	Name = "Cooldown (s)",
-	Range = {1, 30},
-	Increment = 1,
-	CurrentValue = 5,
-	Flag = "Auto404Cooldown",
-	Callback = function(v)
-		t5.Cooldown = v
-	end
-})
-
-KillerTab:CreateSection("Auto Raging Pace")
-
 KillerTab:CreateToggle({
-	Name = "Enable Auto Raging Pace",
-	CurrentValue = false,
-	Flag = "AutoRPEnabled",
+	Name = "Auto Raging Pace",
+	CurrentValue = t11.Enabled,
+	Flag = "AutoRagingPaceToggle",
 	Callback = function(v)
 		t11.Enabled = v
 	end
 })
-
 KillerTab:CreateSlider({
-	Name = "Detection Range",
-	Range = {5, 100},
+	Name = "Raging Pace Range",
+	Range = { 5, 45 },
 	Increment = 1,
-	CurrentValue = 18,
-	Flag = "AutoRPRange",
+	Suffix = " studs",
+	CurrentValue = t11.Range,
+	Flag = "AutoRagingPaceRangeSlider",
 	Callback = function(v)
 		t11.Range = v
 	end
 })
 
-KillerTab:CreateSlider({
-	Name = "Cooldown (s)",
-	Range = {1, 30},
-	Increment = 1,
-	CurrentValue = 5,
-	Flag = "AutoRPCooldown",
-	Callback = function(v)
-		t11.Cooldown = v
-	end
-})
-
-local PunchTab = Window:CreateTab("Punch", "crosshair")
-PunchTab:CreateSection("Auto Punch & Aim")
-
+local PunchTab = Window:CreateTab("Punch", "zap")
 PunchTab:CreateToggle({
-	Name = "Enable Auto Punch",
-	CurrentValue = false,
+	Name = "Auto Punch",
+	CurrentValue = t17.AutoPunch,
 	Flag = "AutoPunchToggle",
 	Callback = function(v)
 		t17.AutoPunch = v
 	end
 })
-
-PunchTab:CreateToggle({
-	Name = "Punch Tracking",
-	CurrentValue = false,
-	Flag = "PunchTracking",
-	Callback = function(v)
-		t17.TrackingEnabled = v
-		if not v and trackingActive then
-			stopTrackingSmooth()
-		end
-	end
-})
-
 PunchTab:CreateToggle({
 	Name = "Punch Aim",
-	CurrentValue = false,
+	CurrentValue = t17.PunchAim,
 	Flag = "PunchAimToggle",
 	Callback = function(v)
 		t17.PunchAim = v
-		if not v then
-			aimActiveUntil = 0
-			aimTarget = nil
-		end
 	end
 })
-
+PunchTab:CreateToggle({
+	Name = "Punch Tracking",
+	CurrentValue = t17.TrackingEnabled,
+	Flag = "PunchTrackingToggle",
+	Callback = function(v)
+		t17.TrackingEnabled = v
+	end
+})
 PunchTab:CreateSlider({
 	Name = "Aim Distance",
-	Range = {10, 200},
-	Increment = 5,
-	CurrentValue = 50,
-	Flag = "AimDistance",
+	Range = { 10, 100 },
+	Increment = 1,
+	Suffix = " studs",
+	CurrentValue = t17.AimDistance,
+	Flag = "PunchAimDistanceSlider",
 	Callback = function(v)
 		t17.AimDistance = v
 	end
 })
 
-local MiscTab = Window:CreateTab("Misc", "wrench")
-MiscTab:CreateSection("Camera")
-
+local MiscTab = Window:CreateTab("Misc", "settings")
 MiscTab:CreateToggle({
-	Name = "Free Zoom",
-	CurrentValue = false,
-	Flag = "FreeZoom",
+	Name = "Show Quick Buttons",
+	CurrentValue = true,
+	Flag = "ShowQuickButtonsToggle",
 	Callback = function(v)
-		LocalPlayer.CameraMaxZoomDistance = v and math.huge or 12
+		quickHolder.Visible = v
 	end
 })
-
 MiscTab:CreateToggle({
-	Name = "Camera Noclip",
-	CurrentValue = false,
-	Flag = "CameraNoclip",
-	Callback = function(v)
-		LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode[v and "Invisicam" or "Zoom"]
-	end
-})
-
-MiscTab:CreateSection("Lighting")
-
-MiscTab:CreateSlider({
-	Name = "Brightness",
-	Range = {0, 3},
-	Increment = 0.1,
-	CurrentValue = 0,
-	Flag = "Brightness",
-	Callback = function(v)
-		_G.Brightness = v
-	end
-})
-
-MiscTab:CreateToggle({
-	Name = "No Shadows",
-	CurrentValue = false,
-	Flag = "NoShadows",
-	Callback = function(v)
-		_G.GlobalShadows = v
-	end
-})
-
-MiscTab:CreateToggle({
-	Name = "No Fog",
-	CurrentValue = false,
-	Flag = "NoFog",
-	Callback = function(v)
-		_G.NoFog = v
-	end
-})
-
-MiscTab:CreateToggle({
-	Name = "Enable Lighting",
-	CurrentValue = false,
-	Flag = "EnableLighting",
-	Callback = function(v)
-		_G.Fullbright = v
-		if not v then
-			Lighting.OutdoorAmbient = Color3.fromRGB(55, 55, 55)
-			Lighting.Brightness = 0
-			Lighting.GlobalShadows = true
-		end
-	end
-})
-
-MiscTab:CreateSection("Performance & UI")
-
-MiscTab:CreateToggle({
-	Name = "FPS Tracker",
-	CurrentValue = false,
-	Flag = "FpsTracker",
+	Name = "Show FPS",
+	CurrentValue = showFps,
+	Flag = "ShowFpsToggle",
 	Callback = function(v)
 		showFps = v
 		updateStatsVisibility()
 	end
 })
-
 MiscTab:CreateToggle({
-	Name = "Ping Checker",
-	CurrentValue = false,
-	Flag = "PingChecker",
+	Name = "Show Ping",
+	CurrentValue = showPing,
+	Flag = "ShowPingToggle",
 	Callback = function(v)
 		showPing = v
 		updateStatsVisibility()
 	end
 })
-
 MiscTab:CreateToggle({
-	Name = "Low FPS",
+	Name = "Fullbright",
+	CurrentValue = _G.Fullbright,
+	Flag = "FullbrightToggle",
+	Callback = function(v)
+		_G.Fullbright = v
+	end
+})
+MiscTab:CreateToggle({
+	Name = "No Fog",
+	CurrentValue = _G.NoFog,
+	Flag = "NoFogToggle",
+	Callback = function(v)
+		_G.NoFog = v
+	end
+})
+MiscTab:CreateToggle({
+	Name = "FPS Boost (Simplify Parts)",
 	CurrentValue = false,
-	Flag = "LowFps",
+	Flag = "FpsBoostToggle",
 	Callback = function(v)
 		v208(v)
 	end
 })
 
-MiscTab:CreateButton({
-	Name = "Destroy UI (Unload)",
-	Callback = function()
-		stopTrackingSmooth()
-		if overlayGui then
-			overlayGui:Destroy()
-		end
-		Rayfield:Destroy()
-	end
-})
-
-Rayfield:LoadConfiguration()
 refreshAllQuickButtons()
-updateStatsVisibility()
