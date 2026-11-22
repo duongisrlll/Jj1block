@@ -5,6 +5,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local Debris = game:GetService("Debris")
 local Lighting = game:GetService("Lighting")
+local Stats = game:GetService("Stats")
+local CoreGui = game:GetService("CoreGui")
 
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
@@ -97,36 +99,6 @@ _G.AngleAngle = 60
 _G.AngleColor = Color3.fromRGB(0, 255, 0)
 _G.AngleTransparency = 0.5
 _G.BlockMode = "Guest 1337"
-
-local function v31(p1)
-	local CFrame_ = p1.CFrame
-	local v33 = p1.Size / 2
-	local t3 = {
-		Vector3.new(-v33.X, -v33.Y, -v33.Z),
-		Vector3.new(-v33.X, -v33.Y, v33.Z),
-		Vector3.new(-v33.X, v33.Y, -v33.Z),
-		Vector3.new(-v33.X, v33.Y, v33.Z),
-		Vector3.new(v33.X, -v33.Y, -v33.Z),
-		Vector3.new(v33.X, -v33.Y, v33.Z),
-		Vector3.new(v33.X, v33.Y, -v33.Z),
-		Vector3.new(v33.X, v33.Y, v33.Z)
-	}
-	local vector3 = Vector3.new(math.huge, math.huge, math.huge)
-	local vector32 = Vector3.new(-math.huge, -math.huge, -math.huge)
-
-	for _, v in ipairs(t3) do
-		local v39 = CFrame_ * v
-		vector3 = Vector3.new(math.min(vector3.X, v39.X), math.min(vector3.Y, v39.Y), math.min(vector3.Z, v39.Z))
-		vector32 = Vector3.new(math.max(vector32.X, v39.X), math.max(vector32.Y, v39.Y), math.max(vector32.Z, v39.Z))
-	end
-
-	return vector3, vector32
-end
-
-local function v40(p2, p3, p4, p5)
-	local v41 = p2.X <= p5.X and p3.X >= p4.X
-	return v41 and p2.Y <= p5.Y and p3.Y >= p4.Y and p2.Z <= p5.Z and p3.Z >= p4.Z
-end
 
 local function v42(p6)
 	local Character = LocalPlayer.Character
@@ -921,6 +893,243 @@ local function v208(p30)
 	end
 end
 
+-- Overlay GUI: FPS Tracker, Ping Checker & Quick Buttons (Box, Loop, Angle)
+local overlayGui = Instance.new("ScreenGui")
+overlayGui.Name = "JJ1Block_Overlay"
+overlayGui.ResetOnSpawn = false
+overlayGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local guiOk = pcall(function()
+	overlayGui.Parent = CoreGui
+end)
+if not guiOk then
+	overlayGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
+
+local function makeDraggable(guiObj, onTap)
+	local dragging = false
+	local moved = false
+	local dragInput, dragStart, startPos
+
+	guiObj.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			moved = false
+			dragStart = input.Position
+			startPos = guiObj.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					local wasTap = dragging and not moved
+					dragging = false
+					if wasTap and onTap then
+						onTap()
+					end
+				end
+			end)
+		end
+	end)
+
+	guiObj.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	RunService.RenderStepped:Connect(function()
+		if dragging and dragInput and overlayGui.Parent then
+			local delta = dragInput.Position - dragStart
+			if delta.Magnitude > 6 then
+				moved = true
+			end
+			if moved then
+				guiObj.Position = UDim2.new(
+					startPos.X.Scale,
+					startPos.X.Offset + delta.X,
+					startPos.Y.Scale,
+					startPos.Y.Offset + delta.Y
+				)
+			end
+		end
+	end)
+end
+
+-- FPS & Ping HUD
+local showFps = false
+local showPing = false
+
+local statsFrame = Instance.new("Frame")
+statsFrame.Name = "StatsHUD"
+statsFrame.Size = UDim2.new(0, 155, 0, 28)
+statsFrame.Position = UDim2.new(0.5, -77, 0, 10)
+statsFrame.BackgroundColor3 = Color3.fromRGB(16, 22, 28)
+statsFrame.BackgroundTransparency = 0.2
+statsFrame.BorderSizePixel = 0
+statsFrame.Visible = false
+statsFrame.Parent = overlayGui
+
+local statsCorner = Instance.new("UICorner")
+statsCorner.CornerRadius = UDim.new(0, 8)
+statsCorner.Parent = statsFrame
+
+local statsStroke = Instance.new("UIStroke")
+statsStroke.Color = Color3.fromRGB(0, 200, 220)
+statsStroke.Thickness = 1.2
+statsStroke.Parent = statsFrame
+
+local statsLabel = Instance.new("TextLabel")
+statsLabel.Size = UDim2.new(1, -10, 1, 0)
+statsLabel.Position = UDim2.new(0, 5, 0, 0)
+statsLabel.BackgroundTransparency = 1
+statsLabel.Font = Enum.Font.GothamBold
+statsLabel.TextSize = 12
+statsLabel.TextColor3 = Color3.fromRGB(235, 250, 255)
+statsLabel.Text = "FPS: -- | Ping: --"
+statsLabel.Parent = statsFrame
+
+makeDraggable(statsFrame, nil)
+
+local function updateStatsVisibility()
+	statsFrame.Visible = showFps or showPing
+	if showFps and showPing then
+		statsFrame.Size = UDim2.new(0, 155, 0, 28)
+	else
+		statsFrame.Size = UDim2.new(0, 95, 0, 28)
+	end
+end
+
+local function getCurrentPing()
+	local pingVal = nil
+	pcall(function()
+		local netStats = Stats:FindFirstChild("Network")
+		local serverStats = netStats and netStats:FindFirstChild("ServerStatsItem")
+		local dataPing = serverStats and serverStats:FindFirstChild("Data Ping")
+		if dataPing then
+			pingVal = math.floor(dataPing:GetValue())
+		end
+	end)
+	if not pingVal then
+		pcall(function()
+			pingVal = math.floor(LocalPlayer:GetNetworkPing() * 1000)
+		end)
+	end
+	return pingVal
+end
+
+local frameCounter = 0
+local lastStatsUpdate = tick()
+
+RunService.RenderStepped:Connect(function()
+	frameCounter += 1
+	local now = tick()
+	if now - lastStatsUpdate >= 0.5 then
+		local fpsVal = math.clamp(math.round(frameCounter / (now - lastStatsUpdate)), 1, 999)
+		frameCounter = 0
+		lastStatsUpdate = now
+
+		if showFps or showPing then
+			local parts = {}
+			if showFps then
+				table.insert(parts, "FPS: " .. tostring(fpsVal))
+			end
+			if showPing then
+				local pingVal = getCurrentPing()
+				table.insert(parts, "Ping: " .. (pingVal and (tostring(pingVal) .. "ms") or "--"))
+			end
+			statsLabel.Text = table.concat(parts, " | ")
+		end
+	end
+end)
+
+-- Quick Buttons Holder (hiện từng nút khi chế độ tương ứng đang bật)
+local quickHolder = Instance.new("Frame")
+quickHolder.Name = "QuickButtonsHolder"
+quickHolder.Size = UDim2.new(0, 128, 0, 120)
+quickHolder.Position = UDim2.new(0.8, -64, 0.55, 0)
+quickHolder.BackgroundTransparency = 1
+quickHolder.BorderSizePixel = 0
+quickHolder.Parent = overlayGui
+
+local quickLayout = Instance.new("UIListLayout")
+quickLayout.Padding = UDim.new(0, 6)
+quickLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+quickLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+quickLayout.SortOrder = Enum.SortOrder.LayoutOrder
+quickLayout.Parent = quickHolder
+
+makeDraggable(quickHolder, nil)
+
+local function createQuickButton(name, labelText, order, onToggleTap)
+	local btn = Instance.new("TextButton")
+	btn.Name = name
+	btn.LayoutOrder = order
+	btn.Size = UDim2.new(0, 124, 0, 34)
+	btn.BackgroundColor3 = Color3.fromRGB(16, 28, 34)
+	btn.BackgroundTransparency = 0.15
+	btn.BorderSizePixel = 0
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 12
+	btn.TextColor3 = Color3.fromRGB(120, 255, 210)
+	btn.Text = labelText .. ": ON"
+	btn.Visible = false
+	btn.Parent = quickHolder
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = btn
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(0, 230, 160)
+	stroke.Thickness = 1.4
+	stroke.Parent = btn
+
+	makeDraggable(btn, onToggleTap)
+
+	return {
+		Button = btn,
+		Stroke = stroke,
+		SetState = function(enabled)
+			btn.Visible = enabled == true
+			if enabled then
+				btn.Text = labelText .. ": ON"
+				btn.TextColor3 = Color3.fromRGB(120, 255, 210)
+				stroke.Color = Color3.fromRGB(0, 230, 160)
+			else
+				btn.Text = labelText .. ": OFF"
+				btn.TextColor3 = Color3.fromRGB(200, 215, 225)
+				stroke.Color = Color3.fromRGB(90, 110, 125)
+			end
+		end
+	}
+end
+
+local AutoBlockToggle, LoopBlockToggle, AngleBlockToggle
+local syncAutoBlockState, syncLoopBlockState, syncAngleBlockState
+
+local boxQuick = createQuickButton("BoxQuickBtn", "Box Block", 1, function()
+	if syncAutoBlockState then
+		syncAutoBlockState(not _G.AutoBlockEnabled)
+	end
+end)
+
+local loopQuick = createQuickButton("LoopQuickBtn", "Loop Block", 2, function()
+	if syncLoopBlockState then
+		syncLoopBlockState(not _G.LoopBlockEnabled)
+	end
+end)
+
+local angleQuick = createQuickButton("AngleQuickBtn", "Angle Block", 3, function()
+	if syncAngleBlockState then
+		syncAngleBlockState(not _G.AngleBlockEnabled)
+	end
+end)
+
+local function refreshAllQuickButtons()
+	boxQuick.SetState(_G.AutoBlockEnabled)
+	loopQuick.SetState(_G.LoopBlockEnabled)
+	angleQuick.SetState(_G.AngleBlockEnabled)
+end
+
 RunService.Heartbeat:Connect(function()
 	if _G.AutoBlockEnabled or _G.LoopBlockEnabled or _G.AngleBlockEnabled then
 		v101()
@@ -1047,18 +1256,34 @@ end)
 local BoxTab = Window:CreateTab("Box Block", "shield")
 BoxTab:CreateSection("Auto Block")
 
-BoxTab:CreateToggle({
+local guardBox = false
+syncAutoBlockState = function(state)
+	if guardBox then
+		return
+	end
+	guardBox = true
+	_G.AutoBlockEnabled = state
+	u98 = nil
+	u99 = nil
+	u100 = false
+	if state then
+		v23()
+	end
+	if AutoBlockToggle and AutoBlockToggle.Set then
+		pcall(function()
+			AutoBlockToggle:Set(state)
+		end)
+	end
+	boxQuick.SetState(state)
+	guardBox = false
+end
+
+AutoBlockToggle = BoxTab:CreateToggle({
 	Name = "Enable AutoBlock",
 	CurrentValue = false,
 	Flag = "AutoBlockToggle",
 	Callback = function(v)
-		_G.AutoBlockEnabled = v
-		u98 = nil
-		u99 = nil
-		u100 = false
-		if v then
-			v23()
-		end
+		syncAutoBlockState(v)
 	end
 })
 
@@ -1131,19 +1356,35 @@ BoxTab:CreateSlider({
 local LoopTab = Window:CreateTab("Loop Block", "circle")
 LoopTab:CreateSection("Loop Block")
 
-LoopTab:CreateToggle({
+local guardLoop = false
+syncLoopBlockState = function(state)
+	if guardLoop then
+		return
+	end
+	guardLoop = true
+	_G.LoopBlockEnabled = state
+	if state then
+		v23()
+		v65()
+	elseif u58 then
+		u58:Destroy()
+		u58 = nil
+	end
+	if LoopBlockToggle and LoopBlockToggle.Set then
+		pcall(function()
+			LoopBlockToggle:Set(state)
+		end)
+	end
+	loopQuick.SetState(state)
+	guardLoop = false
+end
+
+LoopBlockToggle = LoopTab:CreateToggle({
 	Name = "Enable Loop Block",
 	CurrentValue = false,
 	Flag = "LoopBlockToggle",
 	Callback = function(v)
-		_G.LoopBlockEnabled = v
-		if v then
-			v23()
-			v65()
-		elseif u58 then
-			u58:Destroy()
-			u58 = nil
-		end
+		syncLoopBlockState(v)
 	end
 })
 
@@ -1216,19 +1457,35 @@ LoopTab:CreateToggle({
 local AngleTab = Window:CreateTab("Angle Block", "triangle")
 AngleTab:CreateSection("Angle Block")
 
-AngleTab:CreateToggle({
+local guardAngle = false
+syncAngleBlockState = function(state)
+	if guardAngle then
+		return
+	end
+	guardAngle = true
+	_G.AngleBlockEnabled = state
+	if state then
+		v23()
+		v78()
+	elseif u71 then
+		u71:Destroy()
+		u71 = nil
+	end
+	if AngleBlockToggle and AngleBlockToggle.Set then
+		pcall(function()
+			AngleBlockToggle:Set(state)
+		end)
+	end
+	angleQuick.SetState(state)
+	guardAngle = false
+end
+
+AngleBlockToggle = AngleTab:CreateToggle({
 	Name = "Enable Angle Block",
 	CurrentValue = false,
 	Flag = "AngleBlockToggle",
 	Callback = function(v)
-		_G.AngleBlockEnabled = v
-		if v then
-			v23()
-			v78()
-		elseif u71 then
-			u71:Destroy()
-			u71 = nil
-		end
+		syncAngleBlockState(v)
 	end
 })
 
@@ -1464,6 +1721,26 @@ MiscTab:CreateToggle({
 MiscTab:CreateSection("Performance & UI")
 
 MiscTab:CreateToggle({
+	Name = "FPS Tracker",
+	CurrentValue = false,
+	Flag = "FpsTracker",
+	Callback = function(v)
+		showFps = v
+		updateStatsVisibility()
+	end
+})
+
+MiscTab:CreateToggle({
+	Name = "Ping Checker",
+	CurrentValue = false,
+	Flag = "PingChecker",
+	Callback = function(v)
+		showPing = v
+		updateStatsVisibility()
+	end
+})
+
+MiscTab:CreateToggle({
 	Name = "Low FPS",
 	CurrentValue = false,
 	Flag = "LowFps",
@@ -1476,8 +1753,13 @@ MiscTab:CreateButton({
 	Name = "Destroy UI (Unload)",
 	Callback = function()
 		stopTrackingSmooth()
+		if overlayGui then
+			overlayGui:Destroy()
+		end
 		Rayfield:Destroy()
 	end
 })
 
 Rayfield:LoadConfiguration()
+refreshAllQuickButtons()
+updateStatsVisibility()
