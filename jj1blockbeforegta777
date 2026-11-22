@@ -832,6 +832,156 @@ end
 
 workspace.DescendantAdded:Connect(v201)
 
+local flag2 = false
+local flag3 = false
+local n2 = 10
+local n3 = 0
+local connection3 = nil
+local connection4 = nil
+local animator = nil
+local HDT_CharAddedConn = nil
+
+local GuestBlockAnim = {
+	["72722244508749"] = true,
+}
+
+local function HDT_GetAnimatorOwner()
+	local char = LocalPlayer.Character
+	if not char then
+		return nil
+	end
+	return char:FindFirstChildOfClass("Humanoid") or char
+end
+
+local function fn25()
+	local v5 = HDT_GetAnimatorOwner()
+	animator = v5 and v5:FindFirstChildOfClass("Animator") or nil
+end
+
+local function fn22(arg)
+	if not arg or not arg.Parent then
+		return false
+	end
+	local kRoot = arg:FindFirstChild("HumanoidRootPart")
+	local char = LocalPlayer.Character
+	local myRoot = char and char:FindFirstChild("HumanoidRootPart")
+	if not (kRoot and myRoot) then
+		return false
+	end
+	return (kRoot.Position - myRoot.Position).Magnitude <= 35
+end
+
+local function fn15()
+	local char = LocalPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return nil
+	end
+	local killersFolder = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers") or Workspace:FindFirstChild("Killers")
+	local closest, bestDist = nil, math.huge
+	if killersFolder then
+		for _, model in ipairs(killersFolder:GetChildren()) do
+			if model:IsA("Model") and model ~= char then
+				local kRoot = model:FindFirstChild("HumanoidRootPart")
+				if kRoot then
+					local d = (kRoot.Position - root.Position).Magnitude
+					if d < bestDist then
+						bestDist = d
+						closest = model
+					end
+				end
+			end
+		end
+	end
+	return closest
+end
+
+local function fn24(arg)
+	if flag3 or not arg or not arg.Parent then
+		return
+	end
+	local character = LocalPlayer.Character
+	if not character then
+		return
+	end
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local v5 = fn22(arg)
+	if not (humanoidRootPart and humanoid and v5) then
+		return
+	end
+	flag3 = true
+	humanoid.WalkSpeed = 0
+	humanoid.JumpPower = 0
+	humanoid.PlatformStand = false
+	humanoid.AutoRotate = false
+	local bodyVelocity = Instance.new("BodyVelocity")
+	bodyVelocity.MaxForce = Vector3.new(100000, 0, 100000)
+	bodyVelocity.Velocity = Vector3.zero
+	bodyVelocity.Parent = humanoidRootPart
+	RunService.Heartbeat:Connect(function(...) end)
+
+	task.delay(0.4, function()
+		flag3 = false
+	end)
+end
+
+local function fn19()
+	if connection3 then
+		connection3:Disconnect()
+		connection3 = nil
+	end
+
+	if connection4 then
+		connection4:Disconnect()
+		connection4 = nil
+	end
+
+	if not flag2 then
+		return
+	end
+
+	local function fn26(arg)
+		if not flag2 or flag3 then
+			return
+		end
+		local match = arg.Animation and arg.Animation.AnimationId:match("%d+")
+
+		if match and GuestBlockAnim[match] then
+			local v5 = fn15({ Folder = killers })
+
+			if v5 then
+				task.spawn(function()
+					if n3 > 0 then
+						task.wait(n3)
+					end
+
+					fn24(v5)
+				end)
+			end
+		end
+	end
+
+	local function fn27(arg)
+		if connection4 then
+			connection4:Disconnect()
+			connection4 = nil
+		end
+
+		if arg then
+			connection4 = arg.AnimationPlayed:Connect(fn26)
+		end
+	end
+
+	connection3 = RunService.RenderStepped:Connect(function(...) end)
+
+	if not animator or not animator:IsDescendantOf(Workspace) then
+		fn25()
+	end
+
+	fn27(animator)
+end
+
 _G.Brightness = 0
 _G.GlobalShadows = true
 _G.NoFog = false
@@ -1512,6 +1662,56 @@ AngleTab:CreateSlider({
 	Flag = "AngleFovSlider",
 	Callback = function(v)
 		_G.AngleAngle = v
+	end
+})
+
+local HDTTab = Window:CreateTab("HDT", "shield")
+HDTTab:CreateSection("Hitbox Dragging")
+HDTTab:CreateToggle({
+	Name = "Hitbox Dragging Tech",
+	CurrentValue = flag2,
+	Flag = "JJ1_HDT_Toggle",
+	Callback = function(arg)
+		flag2 = arg
+		if arg then
+			fn19()
+			HDT_CharAddedConn = LocalPlayer.CharacterAdded:Connect(function()
+				task.wait(0.5)
+				fn19()
+			end)
+		else
+			if connection3 then
+				connection3:Disconnect()
+				connection3 = nil
+			end
+			if HDT_CharAddedConn then
+				HDT_CharAddedConn:Disconnect()
+				HDT_CharAddedConn = nil
+			end
+			flag3 = false
+		end
+	end
+})
+HDTTab:CreateSlider({
+	Name = "Dragging Speed",
+	Range = { 5, 20 },
+	Increment = 1,
+	Suffix = " stud/s",
+	CurrentValue = n2,
+	Flag = "JJ1_HDT_Speed",
+	Callback = function(arg)
+		n2 = arg
+	end
+})
+HDTTab:CreateSlider({
+	Name = "Start Delay (Seconds)",
+	Range = { 0, 2 },
+	Increment = 0.05,
+	Suffix = "s",
+	CurrentValue = n3,
+	Flag = "JJ1_HDT_Delay",
+	Callback = function(arg)
+		n3 = arg
 	end
 })
 
