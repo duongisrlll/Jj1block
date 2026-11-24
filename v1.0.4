@@ -1,5 +1,4 @@
---For copy write cre JJ1Block,and ?.....SONSONSONSAHUR:)
-local Players = game:GetService("Players")                                                             
+local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -13,11 +12,11 @@ local CoreGui = game:GetService("CoreGui")
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 local Window = Rayfield:CreateWindow({
-	Name = "JJ1Block(was inspired from fixblock/fixfox)",
+	Name = "JJ1Block(was inspired from fixblock/fixfox)v1.0.4",
 	Icon = 113301831233217,
-	LoadingTitle = "JJ1Block(was inspired from fixblock/fixfox)",
+	LoadingTitle = "JJ1Block(was inspired from fixblock/fixfox)v1.0.4",
 	LoadingSubtitle = "by duongjj67",
-	Theme = "Cyan",
+	Theme = "Ocean",
 	DisableRayfieldPrompts = false,
 	DisableBuildWarnings = false,
 	ConfigurationSaving = {
@@ -26,9 +25,9 @@ local Window = Rayfield:CreateWindow({
 		FileName = "JJ1Block_Config"
 	},
 	Discord = {
-		Enabled = true,
-		Invite = "cKewKv83f",
-		RememberJoins = true
+		Enabled = false,
+		Invite = "false,
+		RememberJoins = false
 	},
 	KeySystem = false
 })
@@ -1571,7 +1570,46 @@ BoxTab:CreateSlider({
 	Callback = function(v)
 		_G.HitboxOffset = v
 	end
+}) 
+BoxTab:CreateSlider({
+    Name = "Width",
+    Range = { 1, 20 },
+    Increment = 0.1,
+    CurrentValue = vector.X,
+    Flag = "BoxWidthX",
+    Callback = function(arg)
+        vector = Vector3.new(arg, vector.Y, vector.Z)
+        _G.BaseHitboxSize = vector 
+        if tbl.OverrideHitboxSizes and fn20 then fn20() end
+    end,
 })
+
+BoxTab:CreateSlider({
+    Name = "Height",
+    Range = { 1, 20 },
+    Increment = 0.1,
+    CurrentValue = vector.Y,
+    Flag = "BoxHeightY",
+    Callback = function(arg)
+        vector = Vector3.new(vector.X, arg, vector.Z)
+        _G.BaseHitboxSize = vector
+        if tbl.OverrideHitboxSizes and fn20 then fn20() end
+    end,
+})
+
+BoxTab:CreateSlider({
+    Name = "Length",
+    Range = { 1, 20 },
+    Increment = 0.1,
+    CurrentValue = vector.Z,
+    Flag = "BoxLengthZ",
+    Callback = function(arg)
+        vector = Vector3.new(vector.X, vector.Y, arg)
+        _G.BaseHitboxSize = vector
+        if tbl.OverrideHitboxSizes and fn20 then fn20() end
+    end,
+})
+
 BoxTab:CreateToggle({
 	Name = "Show Hitbox Visual",
 	CurrentValue = _G.ShowHitboxVisual,
@@ -1715,7 +1753,115 @@ HDTTab:CreateSlider({
 		n3 = arg
 	end
 })
+local AntiBaitTab = Window:CreateTab("Anti Bait", "bait")
 
+local vector = _G.BaseHitboxSize or Vector3.new(4.5, 6, 7.5)
+local color = Color3.fromRGB(255, 255, 255) 
+local tbl15 = {} 
+
+AntiBaitTab:CreateSection("Hitbox Sizes")
+
+AntiBaitTab:CreateToggle({
+    Name = "Override Default Sizes",
+    CurrentValue = false,
+    Flag = "OverrideHitboxSizes",
+    Callback = function(overrideHitboxSizes)
+        tbl.OverrideHitboxSizes = overrideHitboxSizes
+        if fn20 then fn20() end
+    end,
+})
+
+AntiBaitTab:CreateColorPicker({
+    Name = "Outline Color",
+    Color = color,
+    Flag = "AntiBaitOutlineColor",
+    Callback = function(outlineColor)
+        color = outlineColor
+        for _, v in pairs(tbl15) do
+            local hitboxHighlight = v:FindFirstChild("HitboxHighlight")
+            if hitboxHighlight then
+                hitboxHighlight.OutlineColor = outlineColor
+            end
+        end
+    end,
+})
+AntiBaitTab:CreateSection("Anti Bait Protect")
+
+AntiBaitTab:CreateSlider({
+    Name = "Speed Predict Multiplier",
+    Range = { 0.1, 2 },
+    Increment = 0.1,
+    CurrentValue = tbl.SpeedPredictMultiplier or 0.5,
+    Flag = "AntiBaitSpeedPredict",
+    Callback = function(speedPredictMultiplier)
+        tbl.SpeedPredictMultiplier = speedPredictMultiplier
+    end,
+})
+local AntiBaitSettings = {
+    Enabled = false,
+    CheckDistance = 15,
+    LastBlockTime = 0,
+}
+
+AntiBaitTab:CreateToggle({
+    Name = "Enable Anti-Bait",
+    CurrentValue = AntiBaitSettings.Enabled,
+    Flag = "AntiBaitToggle",
+    Callback = function(enabled)
+        AntiBaitSettings.Enabled = enabled
+    end,
+})
+
+AntiBaitTab:CreateSlider({
+    Name = "Check Distance",
+    Range = { 5, 30 },
+    Increment = 1,
+    Suffix = " studs",
+    CurrentValue = AntiBaitSettings.CheckDistance,
+    Flag = "AntiBaitDistance",
+    Callback = function(val)
+        AntiBaitSettings.CheckDistance = val
+    end,
+})
+task.spawn(function()
+    while task.wait(0.05) do
+        if not AntiBaitSettings.Enabled then continue end
+        
+        local char = LocalPlayer.Character
+        if not char then continue end
+        
+        local myRoot = char:FindFirstChild("HumanoidRootPart")
+        if not myRoot then continue end
+        
+        local killersFolder = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild("Killers")
+        if not killersFolder then continue end
+        
+        for _, killer in ipairs(killersFolder:GetChildren()) do
+            if killer:IsA("Model") then
+                local hum = killer:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    local kHitbox = killer:FindFirstChild("QueryHitbox") or killer:FindFirstChild("HumanoidRootPart")
+                    
+                    if kHitbox and (kHitbox.Position - myRoot.Position).Magnitude <= AntiBaitSettings.CheckDistance then
+                        local overlapParams = OverlapParams.new()
+                        overlapParams.FilterType = Enum.RaycastFilterType.Include
+                        overlapParams.FilterDescendantsInstances = { kHitbox }
+                        
+                        local parts = workspace:GetPartBoundsInBox(myRoot.CFrame, vector, overlapParams)
+                        
+                        if #parts > 0 then
+                            if tick() - AntiBaitSettings.LastBlockTime > 0.2 then
+                                AntiBaitSettings.LastBlockTime = tick()
+                                if v26 then v26() 
+                                elseif fn6 then fn6("\3\5\0\0\0Block") end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
 local KillerTab = Window:CreateTab("Killer", "swords")
 KillerTab:CreateToggle({
 	Name = "Auto 404 Error",
@@ -1834,7 +1980,7 @@ MiscTab:CreateToggle({
 	end
 })
 MiscTab:CreateToggle({
-	Name = "Remove Fog",
+	Name = "No Fog",
 	CurrentValue = _G.NoFog,
 	Flag = "NoFogToggle",
 	Callback = function(v)
@@ -1847,7 +1993,297 @@ MiscTab:CreateToggle({
 	Flag = "FpsBoostToggle",
 	Callback = function(v)
 		v208(v)
-	end
-})
+	end                                                                                                                                                                 
+})	
+	local v13 = MiscTab:CreateButton({ 
+		Name = "Fake Block", 
+		Callback = Fakeblock_FUNC 
+	})
+	
+	local v14 = MiscTab:CreateKeybind({ 
+		Name = "Fake Block Keybind", 
+		Callback = FAKEblock_FUNC 
+	})
+	
+	local flag4 = false
+	local button = nil
 
+	createFakeBlockButton = function()
+		if flag4 then
+			return
+		end
+
+		local v15 = fn7({
+			name = "FakeBlock",
+			text = "BLOCK",
+			position = UDim2.new(0.8, 0, 0.6, 0),
+			backgroundColor3 = Color3.fromRGB(30, 30, 30),
+			borderColor3 = Color3.fromRGB(255, 120, 0),
+			onClick = FAKEblock_FUNC,
+			onClose = function()
+				flag4 = false
+				button = nil
+				tbl.FakeBlockEnabled = false
+			end,
+		})
+
+		if v15 then
+			button = v15.button
+			flag4 = true
+		end
+	end
+
+	local v15 = MiscTab:CreateToggle({
+		Name = "Fake Block Button",
+		Default = tbl.FakeBlockEnabled,
+		Callback = function(FakeBlockEnabled)
+			tbl.FakeBlockEnabled = FakeBlockEnabled
+
+			if FakeBlockEnabled and UserInputService.TouchEnabled then
+				createFakeBlockButton()
+			elseif button and button.Parent then
+				button.Text = "Block"
+			end
+		end,
+	})
+Misc:AddSection("FOV")
+
+do
+	local n6 = 1
+	local connection5 = nil
+	local function fn24(...) end
+
+	Misc:AddToggle({
+		Name = "Enable Custom FOV",
+		Callback = function(arg)
+			if connection5 then
+				connection5:Disconnect()
+				connection5 = nil
+			end
+
+			if arg then
+				connection5 = RunService.RenderStepped:Connect(fn24)
+			else
+				pcall(function()
+					localPlayer.Character.FOVMultipliers.FOVSetting.Value = 1
+				end)
+			end
+		end,
+	})
+
+	Misc:AddSlider({
+		Name = "FOV Multiplier",
+		Min = 0.5,
+		Max = 3,
+		Default = n6,
+		Precision = 0.1,
+		Callback = function(arg)
+			n6 = arg
+
+			if connection5 then
+				fn24()
+			end
+		end,
+	})
+end
+Music:AddSection({
+		Name = "Volume",
+		Min = 0,
+		Max = 1,
+		Default = 0.4,
+		Increment = 0.05,
+		Callback = function(volume2)
+			volume = volume2
+
+			if themes then
+				for _, child in ipairs(themes:GetChildren()) do
+					if child:IsA("Sound") and child:GetAttribute("IsCustom") then
+						local attribute = child:GetAttribute("GameVolume")
+
+						if attribute == nil then
+							attribute = child.Volume
+						end
+
+						if attribute > 0 then
+							child:SetAttribute("IsUpdatingVolume", true)
+							child.Volume = volume2
+							child:SetAttribute("IsUpdatingVolume", false)
+						end
+					end
+				end
+			end
+		end,
+	})
+
+	local tbl26 = {}
+
+	for _, v10 in ipairs({
+		{ ID = "LMS", Name = "LMS" },
+		{ ID = "InGame", Name = "Map" },
+		{ ID = "Chase", Name = "Chase" },
+		{ ID = "Lobby", Name = "Lobby" },
+	}) do
+		Music:AddSection(v10.Name)
+
+		Music:AddToggle({
+			Name = "Enable " .. v10.Name .. " Replacement",
+			Callback = function(enabled)
+				tbl22[v10.ID].Enabled = enabled
+
+				if enabled then
+					fn38()
+				end
+
+				fn37(true, v10.ID)
+			end,
+		})
+
+		local function fn39()
+			local tbl27 = {}
+			local flag5 = false
+
+			for k in pairs(tbl24[v10.ID]) do
+				table.insert(tbl27, k)
+				flag5 = true
+			end
+
+			if flag5 then
+				table.insert(tbl27, "───────────────")
+			end
+
+			for k in pairs(tbl21[v10.ID]) do
+				table.insert(tbl27, k)
+			end
+
+			return tbl27
+		end
+
+		tbl26[v10.ID] = Music:AddDropdown({
+			Name = "Select " .. v10.Name .. " Track",
+			Options = fn39(),
+			Callback = function(mode)
+				if mode == "───────────────" or mode:find("^─") then
+					return
+				end
+				tbl23[v10.ID] = tbl23[v10.ID] + 1
+				tbl22[v10.ID].Mode = mode
+				fn37(true, v10.ID)
+			end,
+		})
+
+		Music:AddButton({
+			Name = "Delete Selected Track (" .. v10.Name .. ")",
+			Callback = function()
+				local mode = tbl22[v10.ID].Mode
+				local v11 = tbl24[v10.ID][mode]
+
+				if v11 then
+					tbl23[v10.ID] = tbl23[v10.ID] + 1
+
+					pcall(function()
+						if isfile(v11.File) then
+							delfile(v11.File)
+						end
+					end)
+
+					tbl24[v10.ID][mode] = nil
+					fn25()
+					local mode2 = next(tbl21[v10.ID])
+					tbl22[v10.ID].Mode = mode2
+
+					if tbl26[v10.ID] then
+						tbl26[v10.ID]:UpdateOptions(fn39(), mode2)
+					end
+
+					fn37(true, v10.ID)
+					fn27("Track Deleted", "Successfully deleted: " .. mode, "Notification")
+				else
+					fn27("Cannot Delete", "Default tracks cannot be deleted!", "Warn")
+				end
+			end,
+		})
+
+		Music:AddInput({
+			Name = "Download/Add Track",
+			Description = "File Name or URL",
+			Callback = function(arg)
+				local match = arg:match("^%s*(.-)%s*$") or ""
+				if match == "" then
+					return
+				end
+
+				if (match:find("youtube%.com") or match:find("youtu%.be") or match:find("soundcloud%.com") or match:find("spotify%.com")) and not match:find("^https?://") then
+					match = "https://" .. match
+				end
+
+				local flag5 = match:find("http://") ~= nil or match:find("https://") ~= nil
+				local str4 = ""
+				local str5 = ""
+
+				if flag5 then
+					str5 = match
+				else
+					str4 = match
+
+					if not (str4:lower():match("%.mp3$") or str4:lower():match("%.ogg$")) then
+						str4 ..= ".mp3"
+					end
+				end
+
+				tbl23[v10.ID] = tbl23[v10.ID] + 1
+				local v11 = tbl23[v10.ID]
+
+				task.spawn(function()
+					local trackIsAlreadyDownloaded, v12 = fn31(v10.ID, str5, str4)
+					local flag6 = trackIsAlreadyDownloaded and v12 and isfile(v12.File)
+
+					if flag6 then
+						flag6 = readfile(v12.File):len() > 100
+					end
+
+					if flag6 then
+						tbl22[v10.ID].Mode = trackIsAlreadyDownloaded
+
+						if tbl26[v10.ID] then
+							tbl26[v10.ID]:UpdateOptions(fn39(), trackIsAlreadyDownloaded)
+						end
+
+						fn37(true, v10.ID)
+						fn27("Already Loaded", "Track is already downloaded: " .. trackIsAlreadyDownloaded, "Notification")
+						return
+					end
+
+					local v13, v14, v15 = fn34(str4, str5, v10.ID, v11)
+					if tbl23[v10.ID] ~= v11 then
+						return
+					end
+
+					if v13 and v14 then
+						local addedTrack = fn32(match, v15)
+						local v16 = fn31(v10.ID, str5, v14)
+
+						if v16 and v16 ~= addedTrack then
+							tbl24[v10.ID][v16] = nil
+						end
+
+						tbl24[v10.ID][addedTrack] = { File = v14, Url = str5 }
+						fn25()
+
+						if tbl26[v10.ID] then
+							tbl26[v10.ID]:UpdateOptions(fn39(), addedTrack)
+						end
+
+						tbl22[v10.ID].Mode = addedTrack
+						fn37(true, v10.ID)
+						fn27("Success!", "Added track: " .. addedTrack, "Notification", 4)
+					elseif flag5 then
+						fn27("Download Error", "Failed to download audio.", "Error")
+					else
+						fn27("File Not Found", "File '" .. str4 .. "' was not found!", "Warn")
+					end
+				end)
+			end,
+		})
+	end
+end
 refreshAllQuickButtons()
